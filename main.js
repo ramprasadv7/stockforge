@@ -120,9 +120,19 @@ function startServer() {
       silent: true
     });
 
+    let serverError = '';
     serverProcess.stdout.on('data', (data) => console.log('[server]', data.toString()));
-    serverProcess.stderr.on('data', (data) => console.error('[server error]', data.toString()));
-    serverProcess.on('error', reject);
+    serverProcess.stderr.on('data', (data) => {
+      const msg = data.toString();
+      serverError += msg;
+      console.error('[server error]', msg);
+    });
+    serverProcess.on('error', (e) => reject(new Error(`Server process error: ${e.message}`)));
+    serverProcess.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        reject(new Error(`Server crashed (exit ${code}): ${serverError.slice(0, 200)}`));
+      }
+    });
 
     const checkReady = (attempts = 0) => {
       http.get(`http://localhost:${PORT}/api/ping`, (res) => {
