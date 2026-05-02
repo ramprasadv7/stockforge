@@ -2534,11 +2534,16 @@ async function aisTest(provider) {
   resultEl.textContent = 'Sending test prompt...';
 
   try {
+    // 30s timeout — Ollama/OpenCode can be slow on first call
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch('/api/ai/settings/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider })
+      body: JSON.stringify({ provider }),
+      signal: controller.signal
     });
+    clearTimeout(timeout);
     const data = await res.json();
     if (data.ok) {
       resultEl.className = 'ais-test-result ais-test-ok';
@@ -2549,7 +2554,8 @@ async function aisTest(provider) {
     }
   } catch (e) {
     resultEl.className = 'ais-test-result ais-test-err';
-    resultEl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Error: ${e.message}`;
+    const msg = e.name === 'AbortError' ? 'Timed out after 30s — provider not responding' : e.message;
+    resultEl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> ${msg}`;
   } finally {
     if (btn) { btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Test Connection'; btn.disabled = false; }
   }
@@ -2563,7 +2569,14 @@ async function aisRefreshStatus() {
     const res = await fetch('/api/ai/status');
     const s = await res.json();
     const rows = [
-      { id: 'ollama',    name: 'Ollama (Local)', ok: s.ollama?.running,       detail: s.ollama?.running ? `${s.ollama.model} · ${s.ollama.availableModels?.length || 0} models` : 'Not running — install from ollama.com' },
+      { id: 'ollama',    name: 'Ollama (Local)',
+        ok: s.ollama?.running && (s.ollama?.availableModels?.length > 0),
+        detail: !s.ollama?.running
+          ? 'Not running — start with: ollama serve'
+          : s.ollama?.availableModels?.length === 0
+            ? '⚠ Running but no models — run: ollama pull llama3.2'
+            : `${s.ollama.model} · ${s.ollama.availableModels?.length} model(s) ready`
+      },
       { id: 'opencode',  name: 'OpenCode',       ok: s.opencode?.running,     detail: s.opencode?.running ? `Running on port ${s.opencode.port} · agent: ${s.opencode.agent}` : 'Not detected — open the OpenCode app' },
       { id: 'openai',    name: 'OpenAI',         ok: s.openai?.configured,    detail: s.openai?.configured ? `Model: ${s.openai.model}` : 'No API key set' },
       { id: 'groq',      name: 'Groq (Fast)',    ok: s.groq?.configured,      detail: s.groq?.configured ? `Model: ${s.groq.model}` : 'No API key — free at console.groq.com' },

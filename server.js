@@ -807,7 +807,11 @@ app.get('/api/ai/status', async (req, res) => {
       r.on('error', () => resolve(null));
       r.on('timeout', () => { r.destroy(); resolve(null); });
     });
-    if (result) { ollamaRunning = true; ollamaModels = (result.models || []).map(m => m.name); }
+    if (result) {
+      ollamaModels = (result.models || []).map(m => m.name);
+      // Only mark as properly running if it has at least one model installed
+      ollamaRunning = ollamaModels.length > 0;
+    }
   } catch {}
 
   const ocRunning = findLocalOpenCode();
