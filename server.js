@@ -158,6 +158,7 @@ function askViaOpenCode(prompt, settings) {
                 if (type === 'session.idle' && props.sessionID === sessionId && !done) {
                   done = true;
                   clearTimeout(timer);
+                  clearInterval(pollInterval);
                   evReq.destroy();
 
                   // Prefer accumulated text, fall back to polling GET /session/{id}/message
@@ -196,6 +197,7 @@ function askViaOpenCode(prompt, settings) {
                 if (type === 'session.error' && props.sessionID === sessionId && !done) {
                   done = true;
                   clearTimeout(timer);
+                  clearInterval(pollInterval);
                   evReq.destroy();
                   reject(new Error(`OpenCode error: ${props.error?.data?.message || 'Unknown error'}`));
                 }
@@ -208,6 +210,52 @@ function askViaOpenCode(prompt, settings) {
         evReq.end();
 
         // 3. Short delay then send prompt_async
+        // Also start a polling fallback — if session.idle isn't received within 45s,
+        // poll GET /session/{id}/message directly to get the response
+        let pollInterval = null;
+        const startPolling = () => {
+          let pollAttempts = 0;
+          pollInterval = setInterval(() => {
+            if (done) { clearInterval(pollInterval); return; }
+            pollAttempts++;
+            const pReq = http.request({
+              hostname: '127.0.0.1', port: _ocPort,
+              path: `/session/${sessionId}/message`, method: 'GET', headers
+            }, pRes => {
+              let out = '';
+              pRes.on('data', d => out += d);
+              pRes.on('end', () => {
+                if (done) return;
+                try {
+                  const msgs = JSON.parse(out);
+                  for (const msg of [...msgs].reverse()) {
+                    if (msg.info?.role !== 'assistant') continue;
+                    for (const part of (msg.parts || [])) {
+                      if (part.type === 'text' && part.text?.trim()) {
+                        done = true;
+                        clearInterval(pollInterval);
+                        clearTimeout(timer);
+                        evReq.destroy();
+                        return resolve(part.text.trim());
+                      }
+                    }
+                  }
+                } catch {}
+                // Give up after 24 polls (120s)
+                if (pollAttempts >= 24 && !done) {
+                  done = true;
+                  clearInterval(pollInterval);
+                  clearTimeout(timer);
+                  evReq.destroy();
+                  reject(new Error('OpenCode: no response received after 120s'));
+                }
+              });
+            });
+            pReq.on('error', () => {});
+            pReq.end();
+          }, 5000); // poll every 5s
+        };
+
         setTimeout(() => {
           const promptBody = JSON.stringify({
             parts: [{ type: 'text', text: prompt }],
@@ -226,6 +274,8 @@ function askViaOpenCode(prompt, settings) {
           pReq.on('error', e => { if (!done) { done = true; clearTimeout(timer); evReq.destroy(); reject(e); } });
           pReq.write(promptBody);
           pReq.end();
+          // Start polling 10s after sending — catches cases where session.idle is missed
+          setTimeout(startPolling, 10000);
         }, 300);
       });
     });
@@ -299,9 +349,13 @@ function askViaAnthropic(prompt, settings) {
 // ─── Groq Provider (free, fast) ───────────────────────────────────
 function askViaGroq(prompt, settings) {
   return new Promise((resolve, reject) => {
+    // response_format json_object requires the word "json" in messages
     const body = JSON.stringify({
       model: settings.model || 'llama-3.1-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'system', content: 'You are a financial AI assistant. Always respond with valid JSON only.' },
+        { role: 'user', content: prompt }
+      ],
       max_tokens: 4096,
       temperature: 0.1,
       response_format: { type: 'json_object' }
@@ -372,15 +426,12 @@ function askViaOllama(prompt, settings) {
 
     // Use /api/chat for better JSON compliance + system prompt support
     const url = new URL('/api/chat', rawUrl);
-    // Note: We do NOT use format:'json' here — it causes Ollama to hang
-    // on long financial prompts as it tries to force-validate JSON output.
-    // Instead we rely on the system prompt instruction + jsonMatch extraction.
     const body = JSON.stringify({
       model: settings.model || 'llama3.2',
       stream: false,
       options: { temperature: 0.1, num_predict: 2048 },
       messages: [
-        { role: 'system', content: 'You are a financial AI assistant. You MUST respond with valid JSON only. Start your response with { and end with }. Never add any text before or after the JSON object.' },
+        { role: 'system', content: 'You are a financial AI assistant. You MUST respond with valid JSON only. Never include markdown, code fences, or explanations. Your entire response must be a single valid JSON object starting with { and ending with }.' },
         { role: 'user', content: prompt }
       ]
     });
@@ -413,6 +464,28 @@ function askViaOllama(prompt, settings) {
   });
 }
 
+// ─── Strip markdown fences from AI response ───────────────────────
+// Some models wrap JSON in ```json ... ``` — strip it so JSON.parse works
+function cleanAIResponse(text) {
+  if (!text) return text;
+  // Remove ```json ... ``` or ``` ... ``` fences
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) return fenceMatch[1].trim();
+  // Remove leading/trailing non-JSON text
+  const jsonStart = text.indexOf('{');
+  const jsonEnd   = text.lastIndexOf('}');
+  const arrStart  = text.indexOf('[');
+  const arrEnd    = text.lastIndexOf(']');
+  // Pick whichever starts first
+  if (jsonStart !== -1 && (arrStart === -1 || jsonStart <= arrStart)) {
+    return text.slice(jsonStart, jsonEnd + 1);
+  }
+  if (arrStart !== -1) {
+    return text.slice(arrStart, arrEnd + 1);
+  }
+  return text.trim();
+}
+
 // ─── Universal AI Router ──────────────────────────────────────────
 async function askAI(prompt) {
   const settings = loadAISettings();
@@ -441,7 +514,9 @@ async function askAI(prompt) {
     default:
       aiCall = askViaOllama(prompt, settings.ollama);
   }
-  return Promise.race([aiCall, timeout]);
+  const result = await Promise.race([aiCall, timeout]);
+  // Clean markdown fences from any provider — safe for all
+  return cleanAIResponse(result);
 }
 
 

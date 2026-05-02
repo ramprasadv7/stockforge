@@ -2370,9 +2370,10 @@ const PROVIDERS = [
 let aisCurrentProvider = 'ollama';
 
 async function setupAISettings() {
-  await aisLoadSettings();
+  aisBindEvents();          // bind first so no duplicate listeners
+  await aisLoadSettings();  // then load saved values
   aisRenderProviderList();
-  aisBindEvents();
+  aisSwitchProvider(aisCurrentProvider); // show correct panel
   aisRefreshStatus();
 }
 
@@ -2398,34 +2399,7 @@ async function aisLoadSettings() {
         sel.value = s.ollama.model;
       }
     }
-  } catch {}
-
-  // Wire Detect Models button
-  document.getElementById('aisOllamaRefreshModels')?.addEventListener('click', async () => {
-    const btn = document.getElementById('aisOllamaRefreshModels');
-    btn.textContent = '...';
-    btn.disabled = true;
-    try {
-      const data = await fetch('/api/ollama/models').then(r => r.json());
-      const sel  = document.getElementById('aisOllamaModel');
-      if (!sel) return;
-      if (data.running && data.models?.length > 0) {
-        const current = sel.value;
-        sel.innerHTML = data.models.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
-        if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
-        showToast(`Found ${data.models.length} Ollama model${data.models.length>1?'s':''}`, 'success');
-      } else if (data.running) {
-        showToast('Ollama running but no models installed. Run: ollama pull llama3.2', 'warning');
-      } else {
-        showToast('Ollama not detected. Install from ollama.com', 'warning');
-      }
-    } catch (e) {
-      showToast('Could not reach Ollama: ' + e.message, 'error');
-    } finally {
-      btn.textContent = '↻ Detect';
-      btn.disabled = false;
-    }
-  });
+  } catch (e) { console.error('aisLoadSettings:', e); }
 }
 
 function aisRenderProviderList() {
@@ -2457,10 +2431,10 @@ function aisSwitchProvider(providerId) {
 }
 
 function aisBindEvents() {
-  // Save buttons
-  ['openai', 'anthropic', 'ollama'].forEach(provider => {
-    const btn = document.getElementById(`aisSave-${provider}`);
-    if (btn) btn.addEventListener('click', () => aisSave(provider));
+  // Save buttons — ALL providers
+  PROVIDERS.forEach(p => {
+    const btn = document.getElementById(`aisSave-${p.id}`);
+    if (btn) btn.addEventListener('click', () => aisSave(p.id));
   });
 
   // Test buttons
@@ -2482,6 +2456,33 @@ function aisBindEvents() {
   // Refresh status
   const refreshBtn = document.getElementById('aisRefreshStatus');
   if (refreshBtn) refreshBtn.addEventListener('click', aisRefreshStatus);
+
+  // Ollama: Detect Models button
+  document.getElementById('aisOllamaRefreshModels')?.addEventListener('click', async () => {
+    const btn = document.getElementById('aisOllamaRefreshModels');
+    btn.textContent = '...'; btn.disabled = true;
+    try {
+      const url = document.getElementById('aisOllamaUrl')?.value.trim() || 'http://localhost:11434';
+      const data = await fetch('/api/ollama/models').then(r => r.json());
+      const sel = document.getElementById('aisOllamaModel');
+      if (!sel) return;
+      if (data.running && data.models?.length > 0) {
+        const current = sel.value;
+        sel.innerHTML = data.models.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+        if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
+        else sel.selectedIndex = 0;
+        showToast(`Found ${data.models.length} Ollama model(s)`, 'success');
+      } else if (data.running) {
+        showToast('Ollama running but no models — run: ollama pull llama3.2', 'warning');
+      } else {
+        showToast('Ollama not running — start with: ollama serve', 'warning');
+      }
+    } catch (e) {
+      showToast('Could not reach Ollama: ' + e.message, 'error');
+    } finally {
+      btn.textContent = '↻ Detect'; btn.disabled = false;
+    }
+  });
 
   // Finnhub key save
   document.getElementById('aisFinnhubSave')?.addEventListener('click', async () => {
@@ -2506,31 +2507,52 @@ async function aisSave(provider) {
   const origText = btn?.textContent || 'Save & Set Active';
   if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
 
-  // Always set this provider as active
-  aisCurrentProvider = provider;
-
   const body = { provider };
 
-  if (provider === 'openai') {
-    body.openai = {
-      apiKey: document.getElementById('aisOpenaiKey')?.value.trim() || '',
-      model: document.getElementById('aisOpenaiModel')?.value || 'gpt-4o'
-    };
-  } else if (provider === 'anthropic') {
-    body.anthropic = {
-      apiKey: document.getElementById('aisAnthropicKey')?.value.trim() || '',
-      model: document.getElementById('aisAnthropicModel')?.value || 'claude-sonnet-4-5'
-    };
-  } else if (provider === 'groq') {
-    body.groq = {
-      apiKey: document.getElementById('aisGroqKey')?.value.trim() || '',
-      model: document.getElementById('aisGroqModel')?.value || 'llama-3.1-70b-versatile'
-    };
-  } else if (provider === 'ollama') {
-    body.ollama = {
-      url: document.getElementById('aisOllamaUrl')?.value.trim() || 'http://localhost:11434',
-      model: document.getElementById('aisOllamaModel')?.value.trim() || 'llama3.2'
-    };
+  // Collect form values for each provider
+  switch (provider) {
+    case 'openai':
+      body.openai = {
+        apiKey: document.getElementById('aisOpenaiKey')?.value.trim() || '',
+        model:  document.getElementById('aisOpenaiModel')?.value || 'gpt-4o'
+      };
+      if (!body.openai.apiKey) {
+        showToast('Please enter your OpenAI API key', 'warning');
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        return;
+      }
+      break;
+    case 'anthropic':
+      body.anthropic = {
+        apiKey: document.getElementById('aisAnthropicKey')?.value.trim() || '',
+        model:  document.getElementById('aisAnthropicModel')?.value || 'claude-sonnet-4-5'
+      };
+      if (!body.anthropic.apiKey) {
+        showToast('Please enter your Anthropic API key', 'warning');
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        return;
+      }
+      break;
+    case 'groq':
+      body.groq = {
+        apiKey: document.getElementById('aisGroqKey')?.value.trim() || '',
+        model:  document.getElementById('aisGroqModel')?.value || 'llama-3.1-70b-versatile'
+      };
+      if (!body.groq.apiKey) {
+        showToast('Please enter your Groq API key (free at console.groq.com)', 'warning');
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        return;
+      }
+      break;
+    case 'ollama':
+      body.ollama = {
+        url:   document.getElementById('aisOllamaUrl')?.value.trim()   || 'http://localhost:11434',
+        model: document.getElementById('aisOllamaModel')?.value?.trim() || 'llama3.2'
+      };
+      break;
+    case 'opencode':
+      body.opencode = { agent: 'general' };
+      break;
   }
 
   try {
