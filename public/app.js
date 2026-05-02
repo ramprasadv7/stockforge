@@ -375,28 +375,41 @@ async function rateAllPortfolio(force = false) {
   }
 }
 
-async function addPickToWatchlist(ticker, type) {
-  if (type === 'crypto') {
-    await fetch('/api/longterm/crypto/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
-    await fetch('/api/daytrading/crypto/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
-  } else {
-    await fetch('/api/longterm/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
-    await fetch('/api/daytrading/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
+async function addPickToWatchlist(ticker, type, btnEl) {
+  // btnEl passed explicitly — don't rely on implicit event.target (breaks after async)
+  if (btnEl) { btnEl.textContent = 'Adding...'; btnEl.disabled = true; }
+  try {
+    if (type === 'crypto') {
+      await fetch('/api/longterm/crypto/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
+      await fetch('/api/daytrading/crypto/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
+    } else {
+      await fetch('/api/longterm/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
+      await fetch('/api/daytrading/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker }) });
+    }
+    await loadData();
+    await trackedRefresh();
+    if (btnEl) {
+      btnEl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Added';
+    }
+    showToast(`${ticker} added to watchlist`, 'success');
+  } catch (e) {
+    if (btnEl) { btnEl.textContent = '+ Watch'; btnEl.disabled = false; }
+    showToast('Failed to add: ' + e.message, 'error');
   }
-  await loadData();
-  await trackedRefresh();
-  // Show confirmation
-  const btn = event.target;
-  btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Added';
-  btn.disabled = true;
 }
 
 // ─── Data ─────────────────────────────────────────────────────────
 async function loadData() {
-  const res = await fetch('/api/data');
-  appData = await res.json();
-  renderDayTrading();
-  renderLongTerm();
+  try {
+    const res = await fetch('/api/data');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    appData = await res.json();
+    renderDayTrading();
+    renderLongTerm();
+  } catch (e) {
+    console.error('loadData failed:', e);
+    showToast('Failed to load data — try restarting the app', 'error');
+  }
 }
 
 async function saveData() {
@@ -407,6 +420,16 @@ async function saveData() {
 // refreshAllPrices removed — use trackedRefresh() instead
 
 function updateMarketStatus() {
+  // Guard: elements may not exist yet on first call before DOM ready
+  const statusEl  = document.getElementById('marketStatus');
+  const sourceEl  = document.getElementById('priceSourceLabel');
+  const banner    = document.getElementById('marketBanner');
+  const bannerDot = document.getElementById('marketBannerDot');
+  const bannerLabel  = document.getElementById('marketBannerLabel');
+  const bannerDetail = document.getElementById('marketBannerDetail');
+  const bannerTime   = document.getElementById('marketBannerTime');
+  if (!statusEl || !banner) return; // DOM not ready yet
+
   const now = new Date();
   const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
   const hour = etNow.getHours();
@@ -416,14 +439,6 @@ function updateMarketStatus() {
   const isMarketHours = (hour > 9 || (hour === 9 && min >= 30)) && hour < 16;
   const isPreMarket = isWeekday && (hour >= 4 && (hour < 9 || (hour === 9 && min < 30)));
   const isAfterHours = isWeekday && (hour >= 16 && hour < 20);
-
-  const statusEl = document.getElementById('marketStatus');
-  const sourceEl = document.getElementById('priceSourceLabel');
-  const banner = document.getElementById('marketBanner');
-  const bannerDot = document.getElementById('marketBannerDot');
-  const bannerLabel = document.getElementById('marketBannerLabel');
-  const bannerDetail = document.getElementById('marketBannerDetail');
-  const bannerTime = document.getElementById('marketBannerTime');
 
   const etTimeStr = etNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET';
 
@@ -467,7 +482,8 @@ function updateMarketStatus() {
     bannerDetail.textContent = 'Showing last closing prices · Regular session ended 4:00 PM ET';
     bannerTime.textContent = etTimeStr;
   } else {
-    const dayName = day === 0 ? 'Sunday' : 'Saturday';
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dayName = dayNames[day] || '';
     statusEl.textContent = '● Closed';
     statusEl.className = 'market-status';
     sourceEl.textContent = 'Market Closed';
@@ -544,6 +560,7 @@ function setupDayTrading() {
       notes: document.getElementById('ctNotes').value
     };
 
+    const wasEdit = !!editContractId; // capture BEFORE clearing
     if (editContractId) {
       await fetch(`/api/daytrading/contracts/${editContractId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -557,8 +574,8 @@ function setupDayTrading() {
       });
     }
 
-    // Also paper trade if requested
-    if (alsoPaperTrade && !editContractId) {
+    // Also paper trade if requested — only on NEW contracts, not edits
+    if (alsoPaperTrade && !wasEdit) {
       const stockPrice = prices[ticker]?.price || 0;
       await fetch('/api/paper/trade', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -626,7 +643,8 @@ function tickerColor(p) {
 
 function renderDtWatchlist() {
   const el = document.getElementById('dtWatchlist');
-  const list = appData.daytrading.watchlist;
+  if (!appData) return;
+  const list = appData?.daytrading?.watchlist || [];
   if (!list.length) { el.innerHTML = '<div class="empty-state">No stocks. Click + Add Stock.</div>'; return; }
   el.innerHTML = list.map(s => {
     const p = prices[s.ticker];
@@ -654,15 +672,19 @@ async function removeDtStock(e, ticker) {
 }
 
 function updateDtSignalSelect() {
+  if (!appData) return;
   const sel = document.getElementById('dtSignalTicker');
+  if (!sel) return;
   const current = sel.value;
+  const watchlist = appData?.daytrading?.watchlist || [];
   sel.innerHTML = '<option value="">Select a stock...</option>' +
-    appData.daytrading.watchlist.map(s => `<option value="${s.ticker}" ${s.ticker === current ? 'selected' : ''}>${s.ticker}${prices[s.ticker] ? ' — $' + fmt(prices[s.ticker].price) : ''}</option>`).join('');
+    watchlist.map(s => `<option value="${s.ticker}" ${s.ticker === current ? 'selected' : ''}>${s.ticker}${prices[s.ticker] ? ' — $' + fmt(prices[s.ticker].price) : ''}</option>`).join('');
 }
 
 function renderDtContracts() {
   const el = document.getElementById('dtContracts');
-  const list = appData.daytrading.contracts;
+  if (!appData) return;
+  const list = appData?.daytrading?.contracts || [];
   if (!list.length) { el.innerHTML = '<div class="empty-state">No open contracts. Generate a signal and log your first trade.</div>'; return; }
   el.innerHTML = `<div class="contracts-table-wrap"><table class="contracts-table">
     <thead><tr>
@@ -1165,31 +1187,14 @@ async function analyzeContract(contract) {
 
   try {
     const currentPrice = prices[contract.ticker]?.price || 0;
-    const res = await fetch('/api/ai/monitor', {
+    await readSSE('/api/ai/monitor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contract, currentPrice })
+    }, (msg) => {
+      if (msg.type === 'analysis') renderMonitorCard(el, msg.data, contract);
+      if (msg.type === 'error') el.innerHTML = `<div class="empty-state red">⚠ ${msg.text}</div>`;
     });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const msg = JSON.parse(line.slice(6));
-          if (msg.type === 'analysis') renderMonitorCard(el, msg.data, contract);
-          if (msg.type === 'error') el.innerHTML = `<div class="empty-state red">Error: ${msg.text}</div>`;
-        } catch {}
-      }
-    }
   } catch (e) {
     el.innerHTML = `<div class="empty-state red">Failed: ${e.message}</div>`;
   }
@@ -1420,31 +1425,14 @@ async function analyzeStock() {
       news = Array.isArray(newsData) ? newsData : [];
     } catch { news = []; }
 
-    const res = await fetch('/api/ai/analyze-stock', {
+    await readSSE('/api/ai/analyze-stock', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticker, currentPrice, shares: stock?.shares, avgCost: stock?.avgCost, news })
+    }, (msg) => {
+      if (msg.type === 'analysis') renderAnalysisCard(el, msg.data, ticker, currentPrice, stock);
+      if (msg.type === 'error') el.innerHTML = `<div class="empty-state red">⚠ ${msg.text}</div>`;
     });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const msg = JSON.parse(line.slice(6));
-          if (msg.type === 'analysis') renderAnalysisCard(el, msg.data, ticker, currentPrice, stock);
-          if (msg.type === 'error') el.innerHTML = `<div class="empty-state red">Error: ${msg.text}</div>`;
-        } catch {}
-      }
-    }
   } catch (e) {
     el.innerHTML = `<div class="empty-state red">Failed: ${e.message}</div>`;
   }
@@ -1521,31 +1509,14 @@ async function generateWeeklySummary() {
     const priceMap = {};
     appData.longterm.portfolio.forEach(s => { priceMap[s.ticker] = prices[s.ticker]?.price || 0; });
 
-    const res = await fetch('/api/ai/weekly-summary', {
+    await readSSE('/api/ai/weekly-summary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ portfolio: appData.longterm.portfolio, prices: priceMap })
+    }, (msg) => {
+      if (msg.type === 'summary') renderWeeklySummary(el, msg.data);
+      if (msg.type === 'error') el.innerHTML = `<div class="empty-state red">⚠ ${msg.text}</div>`;
     });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const msg = JSON.parse(line.slice(6));
-          if (msg.type === 'summary') renderWeeklySummary(el, msg.data);
-          if (msg.type === 'error') el.innerHTML = `<div class="empty-state red">Error: ${msg.text}</div>`;
-        } catch {}
-      }
-    }
   } catch (e) {
     el.innerHTML = `<div class="empty-state red">Failed: ${e.message}</div>`;
   }

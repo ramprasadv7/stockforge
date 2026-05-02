@@ -2179,7 +2179,7 @@ app.post('/api/options/estimated', async (req, res) => {
     send({ type: 'status', text: '📊 Generating estimated options chain...' });
     const prompt = `You are an options pricing expert. Generate a realistic estimated options chain for ${ticker} with current stock price $${price}.
 
-Generate options for 3 expiration dates: approximately 2 weeks, 1 month, and 2 months from today (April 2026).
+Generate options for 3 expiration dates: approximately 2 weeks, 1 month, and 2 months from today (${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}).
 For each expiration, generate 7 strike prices centered around the current price (3 ITM, ATM, 3 OTM) in $5 increments for stocks under $500, $10 increments for stocks $500+.
 
 Use realistic Black-Scholes-inspired pricing. Consider:
