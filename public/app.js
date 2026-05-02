@@ -1,3 +1,71 @@
+// ─── Universal SSE Stream Reader with Timeout ─────────────────────
+// Wraps fetch SSE streams with a 90s timeout so spinners never hang forever
+async function readSSE(url, options, onMessage) {
+  const controller = new AbortController();
+  const hardTimeout = setTimeout(() => controller.abort(), 90000);
+  let lastDataTime = Date.now();
+  const watchdog = setInterval(() => {
+    if (Date.now() - lastDataTime > 60000) controller.abort();
+  }, 5000);
+
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      lastDataTime = Date.now();
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(line.indexOf(':') + 1).trim();
+        if (!jsonStr) continue;
+        try { onMessage(JSON.parse(jsonStr)); } catch {}
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      onMessage({ type: 'error', text: 'Timed out — AI took too long. Is your AI provider running? Check AI Settings.' });
+    } else { throw e; }
+  } finally {
+    clearTimeout(hardTimeout);
+    clearInterval(watchdog);
+  }
+}
+
+// ─── Patched ReadableStream — add timeout to ALL existing SSE readers ──
+// This wraps the native ReadableStreamDefaultReader.read() so ALL
+// existing res.body.getReader() calls automatically get a 90s timeout
+const _origGetReader = ReadableStream.prototype.getReader;
+ReadableStream.prototype.getReader = function(...args) {
+  const reader = _origGetReader.apply(this, args);
+  const _origRead = reader.read.bind(reader);
+  let lastRead = Date.now();
+  const watchdog = setInterval(() => {
+    if (Date.now() - lastRead > 90000) {
+      reader.cancel('SSE timeout — AI provider took too long');
+      clearInterval(watchdog);
+    }
+  }, 5000);
+  reader.read = function() {
+    lastRead = Date.now();
+    return _origRead().finally(() => {
+      // Clear watchdog when stream finishes
+    });
+  };
+  // Clear watchdog when stream is cancelled/released
+  const _origCancel = reader.cancel?.bind(reader);
+  if (_origCancel) reader.cancel = function(...a) { clearInterval(watchdog); return _origCancel(...a); };
+  const _origRelease = reader.releaseLock?.bind(reader);
+  if (_origRelease) reader.releaseLock = function() { clearInterval(watchdog); return _origRelease(); };
+  return reader;
+};
+
 // ─── Theme ────────────────────────────────────────────────────────
 const THEMES = ['light', 'dark', 'cosmos', 'glass'];
 const THEME_LABELS = { light: '️', dark: '', cosmos: '', glass: '' };
@@ -769,40 +837,23 @@ async function generateSignal() {
       news = Array.isArray(newsData) ? newsData : [];
     } catch { news = []; }
 
-    const res = await fetch('/api/ai/signal', {
+    await readSSE('/api/ai/signal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticker, price: priceData.price, change: priceData.change, changePct: priceData.changePct, news })
-    });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const msg = JSON.parse(line.slice(6));
-          if (msg.type === 'status') {
-            document.getElementById('dtSignalStatus').textContent = msg.text;
-          } else if (msg.type === 'signal') {
-            loadingEl.classList.add('hidden');
-            renderSignalCard(cardEl, msg.data, ticker, priceData.price);
-            cardEl.classList.remove('hidden');
-          } else if (msg.type === 'error') {
-            loadingEl.classList.add('hidden');
-            cardEl.innerHTML = `<div class="empty-state red">Error: ${msg.text}</div>`;
-            cardEl.classList.remove('hidden');
-          }
-        } catch {}
+    }, (msg) => {
+      if (msg.type === 'status') {
+        document.getElementById('dtSignalStatus').textContent = msg.text;
+      } else if (msg.type === 'signal') {
+        loadingEl.classList.add('hidden');
+        renderSignalCard(cardEl, msg.data, ticker, priceData.price);
+        cardEl.classList.remove('hidden');
+      } else if (msg.type === 'error') {
+        loadingEl.classList.add('hidden');
+        cardEl.innerHTML = `<div class="empty-state red">⚠ ${msg.text}</div>`;
+        cardEl.classList.remove('hidden');
       }
-    }
+    });
   } catch (e) {
     loadingEl.classList.add('hidden');
     document.getElementById('dtSignalCard').innerHTML = `<div class="empty-state red">Failed: ${e.message}</div>`;

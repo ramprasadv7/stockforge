@@ -372,13 +372,15 @@ function askViaOllama(prompt, settings) {
 
     // Use /api/chat for better JSON compliance + system prompt support
     const url = new URL('/api/chat', rawUrl);
+    // Note: We do NOT use format:'json' here — it causes Ollama to hang
+    // on long financial prompts as it tries to force-validate JSON output.
+    // Instead we rely on the system prompt instruction + jsonMatch extraction.
     const body = JSON.stringify({
       model: settings.model || 'llama3.2',
       stream: false,
-      format: 'json',
-      options: { temperature: 0.1 },
+      options: { temperature: 0.1, num_predict: 2048 },
       messages: [
-        { role: 'system', content: 'You are a financial AI assistant. Always respond with valid JSON only. Never add explanatory text before or after the JSON.' },
+        { role: 'system', content: 'You are a financial AI assistant. You MUST respond with valid JSON only. Start your response with { and end with }. Never add any text before or after the JSON object.' },
         { role: 'user', content: prompt }
       ]
     });
