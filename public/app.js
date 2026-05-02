@@ -5900,6 +5900,10 @@ function paperRenderPositions() {
       : Math.max(0, p.strike - stockPrice);
     const itm = intrinsic > 0;
 
+    const sourceBadge = p.source === 'auto'
+      ? '<span class="paper-auto-badge">⚡ Auto</span>'
+      : '<span class="paper-manual-badge">Manual</span>';
+
     return `<div class="paper-position ${selectedPaperPosition?.id === p.id ? 'selected' : ''}" onclick="paperSelectPosition('${p.id}')">
       <div class="paper-pos-header">
         <div class="paper-pos-left">
@@ -5908,6 +5912,7 @@ function paperRenderPositions() {
           <span class="paper-pos-strike">$${p.strike}</span>
           <span class="paper-pos-expiry" style="color:${expiryColor}">${p.expiry} (${daysLeft}d)</span>
           ${itm ? '<span class="paper-itm-badge">ITM</span>' : '<span class="paper-otm-badge">OTM</span>'}
+          ${sourceBadge}
         </div>
         <div class="paper-pos-right">
           <div class="paper-pos-pnl ${pnlColor}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(0)} (${pnlPct}%)</div>
@@ -5955,7 +5960,10 @@ function paperRenderClosedTrades() {
       <div class="paper-closed-left">
         <span class="paper-closed-icon">${statusIcon}</span>
         <div>
-          <div style="font-weight:700;font-size:12px">${t.ticker} ${t.type} $${t.strike}</div>
+          <div style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:5px">
+            ${t.ticker} ${t.type} $${t.strike}
+            ${t.source === 'auto' ? '<span class="paper-auto-badge">⚡ Auto</span>' : ''}
+          </div>
           <div style="font-size:10px;color:var(--text3)">${date} · ${t.expiry}</div>
         </div>
       </div>
@@ -8720,14 +8728,15 @@ async function autoRenderLog() {
       const statusCls = `auto-log-status-${e.status}`;
       const action  = e.action || '—';
       const details = e.status === 'executed'
-        ? `$${e.strike} ${e.expiry} · ${e.contracts}x @ $${e.premium?.toFixed(2)} = $${e.totalCost?.toFixed(0)}`
+        ? `$${e.strike} ${e.expiry} · ${e.contracts}x @ $${e.premium?.toFixed(2)} = $${e.totalCost?.toFixed(0)} · conf:${e.confidence}%`
         : e.reason || e.thesis || '—';
-      return `<tr>
+      const needsReview = e.status === 'executed' && (e.confidence < 60 || e.action === 'BUY PUT');
+      return `<tr style="${needsReview ? 'background:rgba(255,209,102,0.06)' : ''}">
         <td style="color:var(--text3);font-size:10px">${date}<br>${time}</td>
         <td style="font-weight:700">${e.ticker || '—'}</td>
-        <td class="${statusCls}">${e.status}</td>
+        <td class="${statusCls}">${e.status}${needsReview ? ' ⚠' : ''}</td>
         <td>${action}</td>
-        <td style="color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis">${details}</td>
+        <td style="color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${e.thesis || ''}">${details}</td>
         <td>${e.mode || '—'}</td>
       </tr>`;
     }).join('');
