@@ -222,31 +222,7 @@ function createWindow() {
     }
   });
 
-  mainWindow.on('close', (e) => {
-    // Check auto mode before closing
-    const autoFile = path.join(require('os').homedir(), '.stockforge', 'auto-settings.json');
-    let autoActive = false;
-    try {
-      const s = JSON.parse(fs.readFileSync(autoFile, 'utf8'));
-      autoActive = !s.killSwitch && Object.values(s.assets || {}).some(a => a.enabled);
-    } catch {}
-
-    if (autoActive && !app.isQuitting) {
-      e.preventDefault();           // Don't close the window
-      mainWindow.hide();            // Hide to tray instead
-      if (tray) {
-        // Show a macOS notification
-        const { Notification } = require('electron');
-        if (Notification.isSupported()) {
-          new Notification({
-            title: 'StockForge running in background',
-            body: 'Auto Mode is active. Click the tray icon to reopen.',
-            silent: true
-          }).show();
-        }
-      }
-      return;
-    }
+  mainWindow.on('closed', () => {
     mainWindow = null;
   });
 
@@ -300,48 +276,8 @@ app.whenReady().then(async () => {
   }
 });
 
-// Quit fully when window is closed
+// Always quit completely when window is closed
 app.on('window-all-closed', () => {
-  // Check if auto mode has active assets — if so, stay alive in tray
-  const autoFile = require('path').join(require('os').homedir(), '.stockforge', 'auto-settings.json');
-  let autoActive = false;
-  try {
-    const s = JSON.parse(require('fs').readFileSync(autoFile, 'utf8'));
-    autoActive = !s.killSwitch && Object.values(s.assets || {}).some(a => a.enabled);
-  } catch {}
-
-  if (autoActive) {
-    // Stay running in tray — auto engine keeps going
-    if (tray) {
-      tray.setToolTip('StockForge — Auto Mode running in background');
-      tray.setContextMenu(require('electron').Menu.buildFromTemplate([
-        { label: '⚡ Auto Mode: Active', enabled: false },
-        { label: 'Open StockForge', click: () => createWindow() },
-        { label: 'Scan Now', click: () => runBackgroundScan() },
-        { type: 'separator' },
-        { label: 'Stop Auto & Quit', click: () => {
-          // Write kill switch before quitting
-          try {
-            const s = JSON.parse(require('fs').readFileSync(autoFile, 'utf8'));
-            s.killSwitch = true;
-            require('fs').writeFileSync(autoFile, JSON.stringify(s, null, 2));
-          } catch {}
-          if (backgroundScanInterval) clearInterval(backgroundScanInterval);
-          if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
-          app.quit();
-        }},
-        { label: 'Quit', click: () => {
-          if (backgroundScanInterval) clearInterval(backgroundScanInterval);
-          if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
-          app.quit();
-        }}
-      ]));
-    }
-    // Don't quit — keep server + engine alive
-    return;
-  }
-
-  // No auto mode — quit normally
   if (backgroundScanInterval) clearInterval(backgroundScanInterval);
   if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
   app.quit();
