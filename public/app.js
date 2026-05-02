@@ -1,3 +1,30 @@
+// ─── showToast — lightweight toast for simple messages ─────────────
+function showToast(message, type = 'info', duration = 5000) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const colors = {
+    success: { bg: 'var(--green-bg)', border: 'rgba(34,197,94,0.3)', color: 'var(--green)' },
+    error:   { bg: 'var(--red-bg)',   border: 'rgba(255,77,109,0.3)', color: 'var(--red)' },
+    warning: { bg: 'var(--yellow-bg)',border: 'rgba(255,209,102,0.3)',color: 'var(--yellow)' },
+    info:    { bg: 'var(--blue-bg)',  border: 'rgba(77,159,255,0.3)', color: 'var(--blue)' }
+  };
+  const c = colors[type] || colors.info;
+  const toast = document.createElement('div');
+  toast.className = `alert-toast alert-toast-${type === 'error' ? 'critical' : type}`;
+  toast.style.cssText = `background:${c.bg};border-color:${c.border}`;
+  toast.innerHTML = `
+    <div class="alert-toast-header">
+      <span class="alert-toast-title" style="color:${c.color}">${message}</span>
+      <button class="alert-toast-close" onclick="this.closest('.alert-toast').remove()">✕</button>
+    </div>`;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('visible'));
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 400);
+  }, duration);
+}
+
 // ─── Universal SSE Stream Reader with Timeout ─────────────────────
 // Wraps fetch SSE streams with a 90s timeout so spinners never hang forever
 async function readSSE(url, options, onMessage) {
@@ -115,6 +142,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupLongTerm();
   setupCrypto();
   await loadData();
+
+  // First-run check — show guidance if watchlist is empty (fresh install)
+  setTimeout(async () => {
+    try {
+      const isEmpty = !appData?.daytrading?.watchlist?.length && !appData?.longterm?.portfolio?.length;
+      if (isEmpty && !localStorage.getItem('sf_onboarded')) {
+        showToast('Welcome! Add stocks to your watchlist to get started.', 'info', 6000);
+      }
+      // Check AI is configured
+      const status = await fetch('/api/ai/status').then(r => r.json());
+      const anyAI = status.opencode?.running || status.ollama?.running ||
+                    status.groq?.configured || status.openai?.configured || status.anthropic?.configured;
+      if (!anyAI && !localStorage.getItem('sf_ai_dismissed')) {
+        showToast('AI not configured — open AI Settings to enable signals & analysis.', 'warning', 8000);
+      }
+    } catch {}
+  }, 2000);
   // Load cached ratings immediately
   await loadCachedRatings();
   // Await prices so UI renders with real data immediately
