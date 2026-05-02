@@ -127,15 +127,16 @@ function startServer() {
     const checkReady = (attempts = 0) => {
       http.get(`http://localhost:${PORT}/api/ping`, (res) => {
         if (res.statusCode === 200) resolve();
-        else if (attempts < 20) setTimeout(() => checkReady(attempts + 1), 300);
+        else if (attempts < 40) setTimeout(() => checkReady(attempts + 1), 500);
         else reject(new Error('Server did not start'));
       }).on('error', () => {
-        if (attempts < 20) setTimeout(() => checkReady(attempts + 1), 300);
+        if (attempts < 40) setTimeout(() => checkReady(attempts + 1), 500);
         else reject(new Error('Server did not start'));
       });
     };
 
-    setTimeout(() => checkReady(), 500);
+    // Give server more time to initialize before first check
+    setTimeout(() => checkReady(), 1000);
   });
 }
 
