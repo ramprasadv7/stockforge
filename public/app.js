@@ -5117,16 +5117,6 @@ async function generateCrewSignal() {
     btn.disabled = false;
   }
 }
-        } catch {}
-      }
-    }
-  } catch (e) {
-    loadingEl.classList.add('hidden');
-    cardEl.innerHTML = `<div class="empty-state red">Failed: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false;
-  }
-}
 
 function renderCrewAgentCard(agentName, data) {
   const breakdown = document.getElementById('crewAgentBreakdown');
