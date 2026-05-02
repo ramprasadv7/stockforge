@@ -41,30 +41,8 @@ async function readSSE(url, options, onMessage) {
 // ─── Patched ReadableStream — add timeout to ALL existing SSE readers ──
 // This wraps the native ReadableStreamDefaultReader.read() so ALL
 // existing res.body.getReader() calls automatically get a 90s timeout
-const _origGetReader = ReadableStream.prototype.getReader;
-ReadableStream.prototype.getReader = function(...args) {
-  const reader = _origGetReader.apply(this, args);
-  const _origRead = reader.read.bind(reader);
-  let lastRead = Date.now();
-  const watchdog = setInterval(() => {
-    if (Date.now() - lastRead > 90000) {
-      reader.cancel('SSE timeout — AI provider took too long');
-      clearInterval(watchdog);
-    }
-  }, 5000);
-  reader.read = function() {
-    lastRead = Date.now();
-    return _origRead().finally(() => {
-      // Clear watchdog when stream finishes
-    });
-  };
-  // Clear watchdog when stream is cancelled/released
-  const _origCancel = reader.cancel?.bind(reader);
-  if (_origCancel) reader.cancel = function(...a) { clearInterval(watchdog); return _origCancel(...a); };
-  const _origRelease = reader.releaseLock?.bind(reader);
-  if (_origRelease) reader.releaseLock = function() { clearInterval(watchdog); return _origRelease(); };
-  return reader;
-};
+// Note: ReadableStream global patch removed — was interfering with Electron internal streams.
+// All SSE calls now use readSSE() helper which has built-in 90s timeout.
 
 // ─── Theme ────────────────────────────────────────────────────────
 const THEMES = ['light', 'dark', 'cosmos', 'glass'];
