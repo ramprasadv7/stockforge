@@ -4121,7 +4121,11 @@ ${tradeContext || 'No prior trades on this ticker'}
 - ATM Strike: $${roundedPrice}
 - OTM Call: $${otmCallStrike} | OTM Put: $${otmPutStrike}
 
-Based on the REAL DATA above, generate a specific options signal. If convergence score < 35 and no insider buys, recommend WAIT.
+Based on the REAL DATA above, generate a specific 2-4 week options swing trade signal.
+- Use the convergence score to set confidence: score >= 60 = high confidence, 35-60 = medium, < 35 = low confidence but still generate a signal
+- Only recommend WAIT if there are BOTH bearish signals AND negative news sentiment AND convergence score < 10
+- A low convergence score means weaker conviction — set confidence lower (30-50%) but still give a directional call based on price action and news
+- Base direction on the 2-4 week trend, not just today's price move
 
 Return ONLY this exact JSON:
 {
