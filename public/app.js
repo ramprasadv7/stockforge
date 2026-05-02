@@ -2534,13 +2534,40 @@ async function aisTest(provider) {
   resultEl.textContent = 'Sending test prompt...';
 
   try {
+    // Build the test payload with current form values
+    // This way Test Connection works even before clicking Save
+    const payload = { provider };
+
+    if (provider === 'openai') {
+      payload.openai = {
+        apiKey: document.getElementById('aisOpenaiKey')?.value.trim() || '',
+        model:  document.getElementById('aisOpenaiModel')?.value || 'gpt-4o'
+      };
+    } else if (provider === 'anthropic') {
+      payload.anthropic = {
+        apiKey: document.getElementById('aisAnthropicKey')?.value.trim() || '',
+        model:  document.getElementById('aisAnthropicModel')?.value || 'claude-sonnet-4-5'
+      };
+    } else if (provider === 'groq') {
+      payload.groq = {
+        apiKey: document.getElementById('aisGroqKey')?.value.trim() || '',
+        model:  document.getElementById('aisGroqModel')?.value || 'llama-3.1-70b-versatile'
+      };
+    } else if (provider === 'ollama') {
+      payload.ollama = {
+        url:   document.getElementById('aisOllamaUrl')?.value.trim()   || 'http://localhost:11434',
+        model: document.getElementById('aisOllamaModel')?.value.trim() || 'llama3.2'
+      };
+    }
+    // opencode has no credentials to pass — it auto-detects
+
     // 30s timeout — Ollama/OpenCode can be slow on first call
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch('/api/ai/settings/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify(payload),
       signal: controller.signal
     });
     clearTimeout(timeout);

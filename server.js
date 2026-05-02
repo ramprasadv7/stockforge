@@ -737,29 +737,40 @@ app.post('/api/ai/settings', (req, res) => {
 
 app.post('/api/ai/settings/test', async (req, res) => {
   try {
-    const { provider } = req.body;
-    const settings = loadAISettings();
+    const { provider, openai, anthropic, groq, ollama, opencode } = req.body;
+    // Use credentials from request body first, fall back to saved settings
+    const saved = loadAISettings();
     const testPrompt = 'Reply with exactly: {"status":"ok","message":"Connection successful"}';
     let result = '';
-    switch (provider || settings.provider) {
+
+    // Merge: request body credentials take priority over saved ones
+    const cfg = {
+      openai:    { ...saved.openai,    ...(openai    || {}) },
+      anthropic: { ...saved.anthropic, ...(anthropic || {}) },
+      groq:      { ...saved.groq,      ...(groq      || {}) },
+      ollama:    { ...saved.ollama,    ...(ollama    || {}) },
+      opencode:  { ...saved.opencode,  ...(opencode  || {}) }
+    };
+
+    switch (provider || saved.provider) {
       case 'openai':
-        if (!settings.openai?.apiKey) return res.json({ ok: false, error: 'No API key set' });
-        result = await askViaOpenAI(testPrompt, settings.openai);
+        if (!cfg.openai?.apiKey) return res.json({ ok: false, error: 'No API key — enter your OpenAI key above' });
+        result = await askViaOpenAI(testPrompt, cfg.openai);
         break;
       case 'anthropic':
-        if (!settings.anthropic?.apiKey) return res.json({ ok: false, error: 'No API key set' });
-        result = await askViaAnthropic(testPrompt, settings.anthropic);
+        if (!cfg.anthropic?.apiKey) return res.json({ ok: false, error: 'No API key — enter your Anthropic key above' });
+        result = await askViaAnthropic(testPrompt, cfg.anthropic);
         break;
       case 'opencode':
-        result = await askViaOpenCode(testPrompt, settings.opencode);
+        result = await askViaOpenCode(testPrompt, cfg.opencode);
         break;
       case 'groq':
-        if (!settings.groq?.apiKey) return res.json({ ok: false, error: 'No API key set' });
-        result = await askViaGroq(testPrompt, settings.groq);
+        if (!cfg.groq?.apiKey) return res.json({ ok: false, error: 'No API key — enter your Groq key above (free at console.groq.com)' });
+        result = await askViaGroq(testPrompt, cfg.groq);
         break;
       case 'ollama':
       default:
-        result = await askViaOllama(testPrompt, settings.ollama);
+        result = await askViaOllama(testPrompt, cfg.ollama);
         break;
     }
     res.json({ ok: true, response: result.slice(0, 200) });

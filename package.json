@@ -1,6 +1,6 @@
 {
   "name": "stockforge",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "StockForge — AI-powered stock trading assistant",
   "main": "main.js",
   "author": "StockForge",
