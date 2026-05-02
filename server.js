@@ -349,16 +349,16 @@ function askViaAnthropic(prompt, settings) {
 // ─── Groq Provider (free, fast) ───────────────────────────────────
 function askViaGroq(prompt, settings) {
   return new Promise((resolve, reject) => {
-    // response_format json_object requires the word "json" in messages
     const body = JSON.stringify({
       model: settings.model || 'llama-3.1-70b-versatile',
       messages: [
-        { role: 'system', content: 'You are a financial AI assistant. Always respond with valid JSON only.' },
+        { role: 'system', content: 'You are a financial AI assistant. You MUST respond with valid JSON only. No explanatory text. Start with { end with }.' },
         { role: 'user', content: prompt }
       ],
       max_tokens: 4096,
-      temperature: 0.1,
-      response_format: { type: 'json_object' }
+      temperature: 0.1
+      // Note: response_format removed — causes issues when model doesn't
+      // perfectly satisfy the constraint. System message is sufficient.
     });
     const extraCACert = process.env.NODE_EXTRA_CA_CERTS;
     const certArgs = extraCACert ? ['--cacert', extraCACert] : [];
@@ -462,6 +462,12 @@ function askViaOllama(prompt, settings) {
     req.write(body);
     req.end();
   });
+}
+
+// ─── Provider helpers ─────────────────────────────────────────────
+function isLocalModel() {
+  const s = loadAISettings();
+  return s.provider === 'ollama';
 }
 
 // ─── Strip markdown fences from AI response ───────────────────────
@@ -1488,7 +1494,15 @@ Return ONLY this exact JSON:
   "summary": "2-3 sentence plain English long-term outlook for a beginner investor"
 }`;
 
-    const result = await askAI(prompt);
+    // Shorter prompt for Ollama (local model — faster generation)
+    const finalPrompt = isLocalModel() ? `Analyze ${ticker} at $${currentPrice} for a long-term investor (3-5 year horizon).
+News: ${newsText.slice(0, 200)}
+${shares ? `Owns ${shares} shares at $${avgCost} avg cost.` : 'Not currently owned.'}
+
+Return ONLY JSON:
+{"recommendation":"BUY" or "HOLD" or "SELL","fairValue":"estimated price","priceTarget":"3yr target","upside":"% upside","timeline":"3-5 years","bullCase":["reason1","reason2"],"bearCase":["risk1"],"sellTriggers":["condition1"],"buyMoreAt":"price","summary":"2 sentence outlook"}` : prompt;
+
+    const result = await askAI(finalPrompt);
     const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Could not parse analysis');
 
