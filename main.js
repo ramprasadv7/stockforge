@@ -112,74 +112,92 @@ function createTray() {
   }
 }
 
+function killPort(port) {
+  // Synchronously kill anything on this port before we start
+  try {
+    const { execSync } = require('child_process');
+    const pids = execSync(`lsof -ti tcp:${port} 2>/dev/null || true`, { encoding: 'utf8' }).trim();
+    if (pids) {
+      pids.split('\n').filter(Boolean).forEach(pid => {
+        try { process.kill(parseInt(pid), 'SIGKILL'); } catch {}
+      });
+    }
+  } catch {}
+}
+
+function killServerProcess() {
+  if (!serverProcess) return;
+  try { serverProcess.kill('SIGKILL'); } catch {}
+  serverProcess = null;
+}
+
 function startServer() {
   return new Promise((resolve, reject) => {
-    const serverPath = path.join(__dirname, 'server.js');
+    // Kill anything already on the port BEFORE forking
+    killPort(PORT);
 
+    const serverPath = path.join(__dirname, 'server.js');
     let serverError = '';
     let serverReady = false;
+    let resolved = false;
+
+    const done = (err) => {
+      if (resolved) return;
+      resolved = true;
+      if (err) reject(err); else resolve();
+    };
 
     serverProcess = fork(serverPath, [], {
-      env: { ...process.env, PORT: PORT },
+      env: { ...process.env, PORT: String(PORT) },
       silent: true
     });
 
     serverProcess.stdout.on('data', (data) => {
       const msg = data.toString();
-      console.log('[server]', msg);
-      // Detect server ready from stdout message
+      console.log('[server]', msg.trim());
       if (msg.includes('running on port') && !serverReady) {
         serverReady = true;
-        // Give it 500ms to fully bind before resolving
-        setTimeout(resolve, 500);
+        setTimeout(() => done(null), 300);
       }
     });
 
     serverProcess.stderr.on('data', (data) => {
-      const msg = data.toString();
-      serverError += msg;
+      const msg = data.toString().trim();
+      serverError += msg + '\n';
       console.error('[server error]', msg);
     });
 
     serverProcess.on('error', (e) => {
-      reject(new Error(`Server process error: ${e.message}`));
+      done(new Error(`Failed to start server process: ${e.message}`));
     });
 
-    serverProcess.on('exit', (code) => {
+    serverProcess.on('exit', (code, signal) => {
       if (!serverReady) {
-        reject(new Error(
-          `Server exited before starting (code ${code}).\n` +
-          (serverError ? serverError.slice(0, 300) : 'No error details available.')
-        ));
+        const errDetail = serverError.slice(0, 400) || `exit code ${code}`;
+        done(new Error(`Server stopped unexpectedly.\n${errDetail}`));
       }
     });
 
-    // Fallback: ping-based check after 3s
-    setTimeout(() => {
-      if (serverReady) return;
-      const checkReady = (attempts = 0) => {
-        http.get(`http://localhost:${PORT}/api/ping`, (res) => {
-          if (res.statusCode === 200 && !serverReady) {
-            serverReady = true;
-            resolve();
-          } else if (attempts < 30) {
-            setTimeout(() => checkReady(attempts + 1), 500);
-          } else if (!serverReady) {
-            reject(new Error(
-              `Server did not respond after 18s.\n` +
-              (serverError ? `Error: ${serverError.slice(0, 300)}` : 'Check that port 3478 is not in use.')
-            ));
-          }
-        }).on('error', () => {
-          if (attempts < 30) setTimeout(() => checkReady(attempts + 1), 500);
-          else if (!serverReady) reject(new Error(
-            `Cannot connect to server.\n` +
-            (serverError ? `Error: ${serverError.slice(0, 300)}` : 'Port 3478 may be in use by another app.')
-          ));
-        });
-      };
-      checkReady();
-    }, 3000);
+    // Ping-based fallback — start after 1s, try for 20s
+    const startTime = Date.now();
+    const pingCheck = () => {
+      if (resolved) return;
+      if (Date.now() - startTime > 20000) {
+        done(new Error(`Server took too long to start.\n${serverError.slice(0, 400) || 'No error details.'}`));
+        return;
+      }
+      http.get(`http://localhost:${PORT}/api/ping`, (res) => {
+        if (res.statusCode === 200 && !serverReady) {
+          serverReady = true;
+          done(null);
+        } else if (!resolved) {
+          setTimeout(pingCheck, 500);
+        }
+      }).on('error', () => {
+        if (!resolved) setTimeout(pingCheck, 500);
+      });
+    };
+    setTimeout(pingCheck, 1000);
   });
 }
 
@@ -268,18 +286,22 @@ app.whenReady().then(async () => {
     createTray();
     startBackgroundScan();
   } catch (err) {
-    dialog.showErrorBox(
-      'StockForge — Startup Error',
-      `${err.message}\n\nTroubleshooting:\n• Make sure no other app is using port 3478\n• Try restarting your Mac\n• Reinstall StockForge from the DMG`
-    );
+    killServerProcess();
+    dialog.showErrorBox('StockForge — Startup Error', err.message);
     app.quit();
   }
 });
 
+function cleanupAndQuit() {
+  if (backgroundScanInterval) { clearInterval(backgroundScanInterval); backgroundScanInterval = null; }
+  killServerProcess();
+  // Also kill the port directly as a safety net
+  killPort(PORT);
+}
+
 // Always quit completely when window is closed
 app.on('window-all-closed', () => {
-  if (backgroundScanInterval) clearInterval(backgroundScanInterval);
-  if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
+  cleanupAndQuit();
   app.quit();
 });
 
@@ -287,6 +309,5 @@ app.on('activate', () => { if (mainWindow === null) createWindow(); });
 
 app.on('before-quit', () => {
   app.isQuitting = true;
-  if (backgroundScanInterval) clearInterval(backgroundScanInterval);
-  if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
+  cleanupAndQuit();
 });
