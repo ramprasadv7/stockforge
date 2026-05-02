@@ -7445,4 +7445,11 @@ app.post('/api/auto/scan-now', async (req, res) => {
 // Start the engine on server boot
 startAutoEngine();
 
-app.listen(PORT, () => console.log(`StockForge server running on port ${PORT}`));
+// Listen on all interfaces so other devices on the same network can connect
+app.listen(PORT, '0.0.0.0', () => {
+  const nets = require('os').networkInterfaces();
+  const ipv4 = Object.values(nets).flat().find(n => n.family === 'IPv4' && !n.internal)?.address || 'localhost';
+  console.log(`StockForge server running on port ${PORT}`);
+  console.log(`Local:   http://localhost:${PORT}`);
+  console.log(`Network: http://${ipv4}:${PORT}`);
+});
