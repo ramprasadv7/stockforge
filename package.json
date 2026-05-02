@@ -1,6 +1,6 @@
 {
   "name": "stockforge",
-  "version": "1.4.8",
+  "version": "1.4.9",
   "description": "StockForge — AI-powered stock trading assistant",
   "main": "main.js",
   "author": "StockForge",
@@ -18,7 +18,7 @@
     "icon": "assets/icon.icns",
     "publish": {
       "provider": "github",
-      "owner": "rvempati",
+      "owner": "ramprasadv7",
       "repo": "stockforge"
     },
     "mac": {
