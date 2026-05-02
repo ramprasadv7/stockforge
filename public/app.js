@@ -3511,8 +3511,17 @@ function renderMorningBrief(container, d) {
       <span class="brief-news-time">${newsTimeAgo ? newsTimeAgo(n.datetime) : ''}</span>
     </div>`).join('') || '<div class="brief-text" style="color:var(--text3)">No market news available.</div>';
 
-  // Stocks to watch section
-  const stocksToWatchHtml = (d.stocksToWatch || []).map(s => `
+  // Build full set of already-tracked tickers for filtering
+  const alreadyTracked = new Set([
+    ...(appData?.longterm?.portfolio   || []).map(s => s.ticker),
+    ...(appData?.longterm?.watchlist   || []).map(s => s.ticker),
+    ...(appData?.daytrading?.watchlist || []).map(s => s.ticker),
+    ...(appData?.daytrading?.cryptoWatchlist || []).map(s => s.ticker),
+  ]);
+
+  // Stocks to watch section — filter out already tracked
+  const freshStocks = (d.stocksToWatch || []).filter(s => !alreadyTracked.has(s.ticker));
+  const stocksToWatchHtml = freshStocks.map(s => `
     <div class="brief-watch-stock">
       <div class="brief-watch-left">
         <span class="brief-watch-ticker">${s.ticker}</span>

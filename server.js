@@ -2367,6 +2367,7 @@ ${marketNewsText}
 
 Generate a concise, actionable morning brief. Be direct, friendly, and specific. No fluff.
 Also identify 2-3 stocks from the general market news that look interesting and worth watching.
+IMPORTANT: For stocksToWatch, ONLY suggest stocks NOT already in their portfolio or watchlist above. Do NOT suggest: ${[...(portfolio||[]), ...(watchlist||[])].map(s=>s.ticker).join(', ')}.
 
 Return ONLY this exact JSON:
 {
@@ -4304,9 +4305,13 @@ ${watchlistNewsText}
 ## Ranked Market News (portfolio-relevant first)
 ${marketNewsText}
 
+## Already Tracking (DO NOT suggest these in stocksToWatch)
+${[...(portfolio||[]), ...(watchlist||[])].map(s=>s.ticker).join(', ')}
+
 ## Your Task
 Write a concise, personalized morning brief using the pre-analyzed data above.
 This is a CREW brief — it should be more insightful than a standard brief because you have specialist agent input.
+For stocksToWatch, only suggest stocks NOT in the already-tracking list above.
 
 Return ONLY this exact JSON:
 {

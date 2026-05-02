@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('stockforge', {
-  version: '1.4.5'
+  version: '1.4.6'
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
