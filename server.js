@@ -456,7 +456,7 @@ function askViaOllama(prompt, settings) {
         } catch { reject(new Error('Ollama parse error: ' + out.slice(0, 100))); }
       });
     });
-    const t = setTimeout(() => { req.destroy(); reject(new Error('Ollama timeout — model may be loading, try again')); }, 120000);
+    const t = setTimeout(() => { req.destroy(); reject(new Error('Ollama timeout after 3 minutes — model may be slow on this Mac. Try llama3.2 (smaller/faster) or use Groq (free, instant).')); }, 180000);
     req.on('error', e => { clearTimeout(t); reject(new Error(`Ollama connection failed: ${e.message}. Is Ollama running?`)); });
     req.on('close', () => clearTimeout(t));
     req.write(body);
@@ -489,9 +489,9 @@ function cleanAIResponse(text) {
 // ─── Universal AI Router ──────────────────────────────────────────
 async function askAI(prompt) {
   const settings = loadAISettings();
-  const AI_TIMEOUT_MS = 120000;
+  const AI_TIMEOUT_MS = 180000; // 3 min — Ollama on slower Macs needs time
   const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('AI request timed out after 120s. Try again.')), AI_TIMEOUT_MS)
+    setTimeout(() => reject(new Error('AI request timed out after 3 minutes. Ollama may be slow on this Mac — try Groq (free, instant at console.groq.com).')), AI_TIMEOUT_MS)
   );
   let aiCall;
   switch (settings.provider) {
@@ -1187,6 +1187,24 @@ app.post('/api/ai/signal', async (req, res) => {
   try {
     send({ type: 'status', text: '🔍 Analyzing options opportunity...' });
 
+    // Send progress updates — important for slow local models like Ollama
+    const settings = loadAISettings();
+    const isOllama = settings.provider === 'ollama';
+    let progressInterval = null;
+    if (isOllama) {
+      let dots = 0;
+      const messages = [
+        '🤖 AI thinking... (Ollama can take 1-2 min on first run)',
+        '⏳ Still working... local AI models are slower but private',
+        '🔄 Almost there... generating your options signal',
+        '💭 Processing... Ollama runs entirely on your Mac'
+      ];
+      progressInterval = setInterval(() => {
+        send({ type: 'status', text: messages[dots % messages.length] });
+        dots++;
+      }, 20000);
+    }
+
     const newsArr = Array.isArray(news) ? news : [];
     const newsText = newsArr.map(n => `- ${n.headline}`).join('\n') || 'No recent news available';
     const today = new Date().toDateString();
@@ -1264,7 +1282,46 @@ Return ONLY this exact JSON:
 }`;
 
     send({ type: 'status', text: '🤖 Building your options signal...' });
-    const result = await askAI(prompt);
+
+    // Shorter prompt for Ollama — same structure, less context to process
+    const finalPrompt = isOllama ? `You are a professional options trader. Generate a 2-4 week swing trade signal for ${ticker} at $${stockPrice.toFixed(2)} today (${today}).
+
+News: ${newsText.slice(0, 300)}
+
+Strikes available: ATM $${atmStrike}, OTM Call $${otmCallStrike}, OTM Put $${otmPutStrike}
+
+Respond with ONLY a valid JSON object. No other text. Example structure:
+{
+  "action": "BUY CALL",
+  "direction": "Bullish",
+  "thesis": "reason for the trade",
+  "strike": ${otmCallStrike},
+  "expiry": "${new Date(Date.now() + 21*24*3600*1000).toISOString().split('T')[0]}",
+  "contracts": 1,
+  "estimatedPremium": 3.50,
+  "totalCost": 350,
+  "costEstimate": "~$350",
+  "breakEven": ${otmCallStrike + 3.5},
+  "breakEvenLabel": "break even price",
+  "maxLoss": 350,
+  "maxLossLabel": "$350 max loss",
+  "targetPrice": ${atmStrike + 10},
+  "targetReturn": "+150%",
+  "confidence": 65,
+  "riskLevel": "Medium",
+  "technical": ["technical observation 1", "technical observation 2"],
+  "fundamental": ["fundamental point"],
+  "news": ["news impact"],
+  "risk": ["main risk"],
+  "whyThisStrike": "why this strike",
+  "whyThisExpiry": "why this expiry",
+  "steps": ["Step 1", "Step 2", "Step 3", "Step 4", "Step 5"],
+  "exitPlan": "exit strategy",
+  "warning": "risk warning",
+  "holdPlan": "hold 2-4 weeks"
+}` : prompt;
+
+    const result = await askAI(finalPrompt);
     send({ type: 'status', text: '📊 Calculating contract details...' });
 
     const jsonMatch = result.match(/\{[\s\S]*\}/);
@@ -1567,14 +1624,16 @@ Return ONLY this exact JSON:
 }`;
 
     const result = await askAI(prompt);
+    if (progressInterval) clearInterval(progressInterval);
     const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Could not parse summary');
+    if (!jsonMatch) throw new Error('Could not parse signal');
 
-    const summary = JSON.parse(jsonMatch[0]);
-    send({ type: 'summary', data: summary });
+    const signal = JSON.parse(jsonMatch[0]);
+    send({ type: 'signal', data: signal });
     send({ type: 'done' });
 
   } catch (e) {
+    if (progressInterval) clearInterval(progressInterval);
     send({ type: 'error', text: e.message });
     send({ type: 'done' });
   } finally {

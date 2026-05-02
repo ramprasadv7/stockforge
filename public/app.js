@@ -2,10 +2,12 @@
 // Wraps fetch SSE streams with a 90s timeout so spinners never hang forever
 async function readSSE(url, options, onMessage) {
   const controller = new AbortController();
-  const hardTimeout = setTimeout(() => controller.abort(), 90000);
+  // 3 minutes hard timeout — Ollama on slower Macs can take 2+ min for long prompts
+  const hardTimeout = setTimeout(() => controller.abort(), 180000);
   let lastDataTime = Date.now();
+  // Watchdog: abort if no data at all for 120s (keepalives reset this)
   const watchdog = setInterval(() => {
-    if (Date.now() - lastDataTime > 60000) controller.abort();
+    if (Date.now() - lastDataTime > 120000) controller.abort();
   }, 5000);
 
   try {
