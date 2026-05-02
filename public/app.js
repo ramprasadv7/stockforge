@@ -1416,8 +1416,8 @@ function updateLtAnalyzeSelect() {
     }).join('');
 }
 
-async function analyzeStock() {
-  const ticker = document.getElementById('ltAnalyzeTicker').value;
+async function analyzeStock(overrideTicker) {
+  const ticker = overrideTicker || document.getElementById('ltAnalyzeTicker')?.value;
   if (!ticker) return alert('Please select a stock first.');
 
   const el = document.getElementById('ltAnalysisOutput');
@@ -6757,21 +6757,43 @@ document.addEventListener('DOMContentLoaded', () => {
   // Refresh button
   document.getElementById('wlRefreshPrices')?.addEventListener('click', () => trackedRefresh());
   // Analyze button — reuse ltAnalyzeBtn logic
-  document.getElementById('wlAnalyzeBtn')?.addEventListener('click', () => {
+  document.getElementById('wlAnalyzeBtn')?.addEventListener('click', async () => {
     const ticker = document.getElementById('wlAnalyzeTicker')?.value;
     if (!ticker) return alert('Select a stock first');
-    // Set the lt analyze ticker and trigger analysis
-    const ltSel = document.getElementById('ltAnalyzeTicker');
-    if (ltSel) ltSel.value = ticker;
-    analyzeStock();
-    // Show output in watchlist tab
-    const out = document.getElementById('wlAnalysisOutput');
-    const ltOut = document.getElementById('ltAnalysisOutput');
-    if (out && ltOut) {
-      // Mirror the lt analysis output into watchlist tab
-      const observer = new MutationObserver(() => { out.innerHTML = ltOut.innerHTML; });
-      observer.observe(ltOut, { childList: true, subtree: true });
-      setTimeout(() => observer.disconnect(), 30000);
+
+    const el = document.getElementById('wlAnalysisOutput');
+    if (!el) return;
+    el.innerHTML = `<div class="signal-loading"><div class="spinner"></div><span>Analyzing ${ticker}...</span></div>`;
+
+    try {
+      // Fetch fresh price
+      let currentPrice = 0;
+      try {
+        const pr = await fetch(`/api/price/${ticker}`);
+        const pd = await pr.json();
+        currentPrice = parseFloat(pd.price) || 0;
+      } catch {}
+
+      // Fetch news
+      let news = [];
+      try {
+        const r = await fetch(`/api/news/${ticker}`);
+        const nd = await r.json();
+        news = Array.isArray(nd) ? nd : [];
+      } catch {}
+
+      el.innerHTML = `<div class="signal-loading"><div class="spinner"></div><span>Analyzing ${ticker} @ $${fmt(currentPrice)}...</span></div>`;
+
+      await readSSE('/api/ai/analyze-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, currentPrice, news })
+      }, (msg) => {
+        if (msg.type === 'analysis') renderAnalysisCard(el, msg.data, ticker, currentPrice, null);
+        if (msg.type === 'error') el.innerHTML = `<div class="empty-state red">⚠ ${msg.text}</div>`;
+      });
+    } catch (e) {
+      el.innerHTML = `<div class="empty-state red">Failed: ${e.message}</div>`;
     }
   });
 });
