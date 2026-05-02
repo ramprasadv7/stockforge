@@ -4098,12 +4098,21 @@ Return ONLY this exact JSON:
   "agentConsensus": "Data-driven: ${convergenceScore}/100 convergence score, ${recentBuys.length} insider buys"
 }`;
 
-    const result = await askAI(prompt);
-    const cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Could not parse signal');
+    const result = await askAI(prompt); // cleanAIResponse already applied inside askAI
+    const match = result.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error(`AI returned invalid response. Raw: ${result.slice(0, 100)}`);
 
-    const signal = JSON.parse(match[0]);
+    let signal;
+    try {
+      signal = JSON.parse(match[0]);
+    } catch (parseErr) {
+      throw new Error(`Could not parse AI response as JSON: ${parseErr.message}`);
+    }
+
+    // Validate required fields
+    if (!signal.action || !signal.strike || signal.confidence === undefined) {
+      throw new Error(`AI response missing required fields (action/strike/confidence). Got: ${JSON.stringify(signal).slice(0, 100)}`);
+    }
     signal.isCrew = true;
     signal.convergenceScore = convergenceScore;
     signal.realSignals = convergenceSignals;

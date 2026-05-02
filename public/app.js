@@ -5129,52 +5129,45 @@ async function generateCrewSignal() {
     cardEl.innerHTML = `<div id="crewAgentBreakdown" class="crew-breakdown"></div>`;
     cardEl.classList.remove('hidden');
 
-    const res = await fetch('/api/ai/signal/crew', {
+    await readSSE('/api/ai/signal/crew', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticker, price: priceData.price, change: priceData.change, changePct: priceData.changePct, news })
-    });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const msg = JSON.parse(line.slice(6));
+    }, (msg) => {
           if (msg.type === 'status') {
             document.getElementById('dtSignalStatus').textContent = msg.text;
           } else if (msg.type === 'agent') {
             renderCrewAgentCard(msg.agent, msg.data);
           } else if (msg.type === 'signal') {
+            // Validate signal before rendering — guard against empty/partial responses
+            const s = msg.data;
+            if (!s.action || !s.strike || s.confidence === undefined) {
+              loadingEl.classList.add('hidden');
+              cardEl.innerHTML = `<div class="empty-state red">⚠ AI returned incomplete signal. Try again or check your AI provider in Settings.</div>`;
+              return;
+            }
             loadingEl.classList.add('hidden');
-            // Render crew badge + standard signal card
             const breakdown = document.getElementById('crewAgentBreakdown');
-            if (!breakdown) return; // element may not exist in this context
             const signalDiv = document.createElement('div');
             signalDiv.innerHTML = `<div class="crew-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg> CREW SIGNAL — 3-Agent Consensus</div>`;
-            if (msg.data.agentConsensus) {
-              signalDiv.innerHTML += `<div class="crew-consensus">${msg.data.agentConsensus}</div>`;
-            }
-            if (msg.data.validationWarnings?.length) {
-              signalDiv.innerHTML += `<div class="crew-warnings"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>️ Validation notes: ${msg.data.validationWarnings.join(', ')}</div>`;
-            }
+            if (s.agentConsensus) signalDiv.innerHTML += `<div class="crew-consensus">${s.agentConsensus}</div>`;
+            if (s.validationWarnings?.length) signalDiv.innerHTML += `<div class="crew-warnings">Validation notes: ${s.validationWarnings.join(', ')}</div>`;
             cardEl.innerHTML = '';
             cardEl.appendChild(signalDiv);
-            renderSignalCard(cardEl, msg.data, ticker, priceData.price);
-            // Auto-save signal to history
-            saveSignalToHistory(ticker, msg.data, priceData.price);
+            renderSignalCard(cardEl, s, ticker, priceData.price);
+            saveSignalToHistory(ticker, s, priceData.price);
           } else if (msg.type === 'error') {
             loadingEl.classList.add('hidden');
-            cardEl.innerHTML = `<div class="empty-state red">Error: ${msg.text}</div>`;
+            cardEl.innerHTML = `<div class="empty-state red">⚠ ${msg.text}</div>`;
           }
+    });
+  } catch (e) {
+    loadingEl.classList.add('hidden');
+    cardEl.innerHTML = `<div class="empty-state red">Failed: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
         } catch {}
       }
     }
