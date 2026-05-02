@@ -3378,15 +3378,26 @@ async function checkAlerts() {
   } catch {}
 }
 
-// Init tools tab
+// Init tools tab — triggered by toolshub top-level tab OR tools hub-subtab
+let _toolsSetupDone = false;
+let _journalSetupDone = false;
+
+function ensureToolsSetup() { if (!_toolsSetupDone) { _toolsSetupDone = true; setupToolsTab(); } }
+function ensureJournalSetup() { if (!_journalSetupDone) { _journalSetupDone = true; setupJournalTab(); } }
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Top-level toolshub tab — init tools (default active subtab) immediately
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    if (btn.dataset.tab === 'tools') {
-      btn.addEventListener('click', () => { if (!btn._toolsInit) { setupToolsTab(); btn._toolsInit = true; } });
+    if (btn.dataset.tab === 'toolshub') {
+      btn.addEventListener('click', () => ensureToolsSetup());
     }
   });
-  // Hook alert check into price refresh
-  const origTracked = window.trackedRefresh;
+  // Hub subtabs within toolshub
+  document.querySelectorAll('.hub-subtab').forEach(btn => {
+    if (btn.dataset.hub !== 'toolshub') return;
+    if (btn.dataset.hubtab === 'tools')    btn.addEventListener('click', ensureToolsSetup);
+    if (btn.dataset.hubtab === 'journal')  btn.addEventListener('click', ensureJournalSetup);
+  });
 });
 
 // ─── TRADE JOURNAL TAB ────────────────────────────────────────────
@@ -3658,13 +3669,8 @@ async function briefAddToWatchlist(ticker, btn) {
   }
 }
 
-// Init journal tab + wire brief buttons globally on DOM ready
+// Journal init handled above in unified toolshub listener
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    if (btn.dataset.tab === 'journal') {
-      btn.addEventListener('click', () => { if (!btn._journalInit) { setupJournalTab(); btn._journalInit = true; } });
-    }
-  });
 
   // Brief close + overlay click — always wired regardless of which tab is active
   document.getElementById('briefCloseBtn')?.addEventListener('click', () => {
@@ -5379,10 +5385,10 @@ async function deleteSignalHistory(id) {
   loadSignalScorecard();
 }
 
-// Wire scorecard load when journal tab opens
+// Wire scorecard load when journal hub-subtab opens
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    if (btn.dataset.tab === 'journal') {
+  document.querySelectorAll('.hub-subtab').forEach(btn => {
+    if (btn.dataset.hubtab === 'journal') {
       btn.addEventListener('click', () => {
         setTimeout(loadSignalScorecard, 300);
       });
@@ -5517,10 +5523,10 @@ async function persistAlert(alert) {
 
 window.deleteAlertLogEntry = deleteAlertLogEntry;
 
-// Wire Alert Log tab
+// Wire Alert Log hub-subtab
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    if (btn.dataset.tab === 'alertlog') {
+  document.querySelectorAll('.hub-subtab').forEach(btn => {
+    if (btn.dataset.hubtab === 'alertlog') {
       btn.addEventListener('click', () => {
         if (!alertLogInit) {
           document.getElementById('alRefreshBtn')?.addEventListener('click', loadAlertLog);
