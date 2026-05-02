@@ -1,0 +1,7 @@
+node_modules/
+dist/
+~/.stockforge/
+*.log
+.DS_Store
+*.dmg
+*.blockmap

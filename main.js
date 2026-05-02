@@ -1,0 +1,309 @@
+const { app, BrowserWindow, Menu, shell, dialog, Notification, ipcMain, Tray, nativeImage } = require('electron');
+const path = require('path');
+const { fork } = require('child_process');
+const http = require('http');
+const fs = require('fs');
+const os = require('os');
+
+const PORT = 3478;
+let mainWindow = null;
+let serverProcess = null;
+let tray = null;
+let backgroundScanInterval = null;
+const SCAN_INTERVAL_MARKET_MS = 2 * 60 * 1000;  // 2 min during market hours
+const SCAN_INTERVAL_OFF_MS    = 10 * 60 * 1000; // 10 min outside market hours
+
+function isMarketHours() {
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) return false;
+  const h = et.getHours();
+  const m = et.getMinutes();
+  const mins = h * 60 + m;
+  return mins >= 390 && mins <= 960; // 6:30am–4:00pm ET (includes pre-market)
+}
+const DATA_FILE = path.join(os.homedir(), '.stockforge', 'data.json');
+
+function loadDataForScan() {
+  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return null; }
+}
+
+function fireNotification(title, body) {
+  if (!Notification.isSupported()) return;
+  const n = new Notification({ title, body, silent: false });
+  n.on('click', () => {
+    if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
+    else createWindow();
+  });
+  n.show();
+}
+
+async function runBackgroundScan() {
+  try {
+    const data = loadDataForScan();
+    const contracts = data?.daytrading?.contracts || [];
+    const portfolio = data?.longterm?.portfolio || [];
+
+    const res = await new Promise((resolve, reject) => {
+      const body = JSON.stringify({ contracts, portfolio, threshold: 10 });
+      const req = http.request({
+        hostname: 'localhost', port: PORT,
+        path: '/api/background/scan', method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      }, res => {
+        let out = '';
+        res.on('data', d => out += d);
+        res.on('end', () => { try { resolve(JSON.parse(out)); } catch { resolve(null); } });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+
+    if (!res?.alerts?.length) return;
+
+    for (const alert of res.alerts) {
+      if (alert.severity === 'critical' || alert.severity === 'warning' || alert.type === 'market_mover') {
+        fireNotification(alert.title, alert.body);
+      }
+      // Forward to renderer if window is open
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('background-alert', alert);
+      }
+    }
+  } catch (e) {
+    console.error('[background scan]', e.message);
+  }
+}
+
+function startBackgroundScan() {
+  if (backgroundScanInterval) return;
+  // First scan after 30s (let server warm up)
+  setTimeout(runBackgroundScan, 30000);
+  // Dynamic interval — check every 30s which interval to use
+  backgroundScanInterval = setInterval(() => {
+    const interval = isMarketHours() ? SCAN_INTERVAL_MARKET_MS : SCAN_INTERVAL_OFF_MS;
+    const now = Date.now();
+    if (!startBackgroundScan._lastRun || (now - startBackgroundScan._lastRun) >= interval) {
+      startBackgroundScan._lastRun = now;
+      runBackgroundScan();
+    }
+  }, 30000); // check every 30s, run based on interval
+  console.log('[background] Scan started — 2min market hours, 10min off-hours');
+}
+
+function createTray() {
+  try {
+    // Use a simple template image (works without custom icon)
+    const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.icns'));
+    const resized = icon.isEmpty() ? nativeImage.createEmpty() : icon.resize({ width: 16, height: 16 });
+    tray = new Tray(resized);
+    tray.setToolTip('StockForge Mentor — monitoring markets');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Open StockForge', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } else createWindow(); } },
+      { label: 'Scan Now', click: () => runBackgroundScan() },
+      { type: 'separator' },
+      { label: 'Quit', click: () => app.quit() }
+    ]));
+    tray.on('click', () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } else createWindow(); });
+  } catch (e) {
+    console.error('[tray]', e.message);
+  }
+}
+
+function startServer() {
+  return new Promise((resolve, reject) => {
+    const serverPath = path.join(__dirname, 'server.js');
+    serverProcess = fork(serverPath, [], {
+      env: { ...process.env, PORT: PORT },
+      silent: true
+    });
+
+    serverProcess.stdout.on('data', (data) => console.log('[server]', data.toString()));
+    serverProcess.stderr.on('data', (data) => console.error('[server error]', data.toString()));
+    serverProcess.on('error', reject);
+
+    const checkReady = (attempts = 0) => {
+      http.get(`http://localhost:${PORT}/api/ping`, (res) => {
+        if (res.statusCode === 200) resolve();
+        else if (attempts < 20) setTimeout(() => checkReady(attempts + 1), 300);
+        else reject(new Error('Server did not start'));
+      }).on('error', () => {
+        if (attempts < 20) setTimeout(() => checkReady(attempts + 1), 300);
+        else reject(new Error('Server did not start'));
+      });
+    };
+
+    setTimeout(() => checkReady(), 500);
+  });
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 1000,
+    minHeight: 700,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 14, y: 16 },
+    backgroundColor: '#0f1117',
+    icon: path.join(__dirname, 'assets', 'icon.icns'),
+    resizable: true,
+    movable: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    },
+    show: false
+  });
+
+  mainWindow.loadURL(`http://localhost:${PORT}`);
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // IPC: send macOS notification from renderer
+  ipcMain.on('notify', (event, title, body) => {
+    if (Notification.isSupported()) {
+      new Notification({ title, body, silent: false }).show();
+    }
+  });
+
+  mainWindow.on('close', (e) => {
+    // Check auto mode before closing
+    const autoFile = path.join(require('os').homedir(), '.stockforge', 'auto-settings.json');
+    let autoActive = false;
+    try {
+      const s = JSON.parse(fs.readFileSync(autoFile, 'utf8'));
+      autoActive = !s.killSwitch && Object.values(s.assets || {}).some(a => a.enabled);
+    } catch {}
+
+    if (autoActive && !app.isQuitting) {
+      e.preventDefault();           // Don't close the window
+      mainWindow.hide();            // Hide to tray instead
+      if (tray) {
+        // Show a macOS notification
+        const { Notification } = require('electron');
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'StockForge running in background',
+            body: 'Auto Mode is active. Click the tray icon to reopen.',
+            silent: true
+          }).show();
+        }
+      }
+      return;
+    }
+    mainWindow = null;
+  });
+
+  buildMenu();
+}
+
+function buildMenu() {
+  const template = [
+    {
+      label: 'StockForge',
+      submenu: [
+        { label: 'About StockForge', role: 'about' },
+        { type: 'separator' },
+        { label: 'Hide', accelerator: 'Cmd+H', role: 'hide' },
+        { type: 'separator' },
+        { label: 'Quit', accelerator: 'Cmd+Q', role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+        { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Reload', accelerator: 'Cmd+R', click: () => mainWindow?.reload() },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+        { label: 'Developer Tools', accelerator: 'Cmd+Alt+I', click: () => mainWindow?.webContents.toggleDevTools() }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+app.whenReady().then(async () => {
+  try {
+    await startServer();
+    createWindow();
+    createTray();
+    startBackgroundScan();
+  } catch (err) {
+    dialog.showErrorBox('Startup Error', `Failed to start server: ${err.message}`);
+    app.quit();
+  }
+});
+
+// Quit fully when window is closed
+app.on('window-all-closed', () => {
+  // Check if auto mode has active assets — if so, stay alive in tray
+  const autoFile = require('path').join(require('os').homedir(), '.stockforge', 'auto-settings.json');
+  let autoActive = false;
+  try {
+    const s = JSON.parse(require('fs').readFileSync(autoFile, 'utf8'));
+    autoActive = !s.killSwitch && Object.values(s.assets || {}).some(a => a.enabled);
+  } catch {}
+
+  if (autoActive) {
+    // Stay running in tray — auto engine keeps going
+    if (tray) {
+      tray.setToolTip('StockForge — Auto Mode running in background');
+      tray.setContextMenu(require('electron').Menu.buildFromTemplate([
+        { label: '⚡ Auto Mode: Active', enabled: false },
+        { label: 'Open StockForge', click: () => createWindow() },
+        { label: 'Scan Now', click: () => runBackgroundScan() },
+        { type: 'separator' },
+        { label: 'Stop Auto & Quit', click: () => {
+          // Write kill switch before quitting
+          try {
+            const s = JSON.parse(require('fs').readFileSync(autoFile, 'utf8'));
+            s.killSwitch = true;
+            require('fs').writeFileSync(autoFile, JSON.stringify(s, null, 2));
+          } catch {}
+          if (backgroundScanInterval) clearInterval(backgroundScanInterval);
+          if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
+          app.quit();
+        }},
+        { label: 'Quit', click: () => {
+          if (backgroundScanInterval) clearInterval(backgroundScanInterval);
+          if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
+          app.quit();
+        }}
+      ]));
+    }
+    // Don't quit — keep server + engine alive
+    return;
+  }
+
+  // No auto mode — quit normally
+  if (backgroundScanInterval) clearInterval(backgroundScanInterval);
+  if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
+  app.quit();
+});
+
+app.on('activate', () => { if (mainWindow === null) createWindow(); });
+
+app.on('before-quit', () => {
+  app.isQuitting = true;
+  if (backgroundScanInterval) clearInterval(backgroundScanInterval);
+  if (serverProcess) { try { serverProcess.kill('SIGKILL'); } catch {} }
+});

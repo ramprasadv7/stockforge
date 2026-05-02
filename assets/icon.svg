@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f1a2e"/>
+      <stop offset="100%" stop-color="#0a1220"/>
+    </linearGradient>
+    <linearGradient id="chartGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#22C55E" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#22C55E" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4d9fff"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+    <linearGradient id="lineGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4d9fff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.7"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softglow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="roundClip">
+      <rect width="1024" height="1024" rx="220" ry="220"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#roundClip)">
+    <!-- Background -->
+    <rect width="1024" height="1024" fill="url(#bgGrad)"/>
+    <!-- Subtle border -->
+    <rect width="1024" height="1024" rx="220" fill="none" stroke="#1e3a5f" stroke-width="8"/>
+
+    <!-- ── Chart bars (bottom half) ── -->
+    <rect x="110" y="680" width="110" height="220" rx="18" fill="url(#chartGrad)"/>
+    <rect x="260" y="580" width="110" height="320" rx="18" fill="url(#chartGrad)"/>
+    <rect x="410" y="630" width="110" height="270" rx="18" fill="url(#chartGrad)"/>
+    <rect x="560" y="500" width="110" height="400" rx="18" fill="url(#chartGrad)"/>
+    <rect x="710" y="400" width="110" height="500" rx="18" fill="#22C55E" fill-opacity="0.65"/>
+    <rect x="860" y="310" width="110" height="590" rx="18" fill="#22C55E" fill-opacity="0.85"/>
+
+    <!-- Trend line over bars (glowing green) -->
+    <polyline
+      points="165,670 315,570 465,620 615,490 765,385 915,295"
+      fill="none"
+      stroke="#22C55E"
+      stroke-width="28"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      filter="url(#glow)"
+    />
+    <polyline
+      points="165,670 315,570 465,620 615,490 765,385 915,295"
+      fill="none"
+      stroke="#22C55E"
+      stroke-width="14"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- ── AI Circuit nodes (top half) ── -->
+    <!-- Connection lines first (behind nodes) -->
+    <line x1="180" y1="220" x2="512" y2="130" stroke="url(#lineGrad1)" stroke-width="10" stroke-opacity="0.5"/>
+    <line x1="512" y1="130" x2="844" y2="220" stroke="url(#lineGrad1)" stroke-width="10" stroke-opacity="0.5"/>
+    <line x1="180" y1="220" x2="346" y2="330" stroke="#4d9fff" stroke-width="8" stroke-opacity="0.45"/>
+    <line x1="844" y1="220" x2="678" y2="330" stroke="#a78bfa" stroke-width="8" stroke-opacity="0.45"/>
+    <line x1="346" y1="330" x2="512" y2="130" stroke="#4d9fff" stroke-width="6" stroke-opacity="0.3"/>
+    <line x1="678" y1="330" x2="512" y2="130" stroke="#a78bfa" stroke-width="6" stroke-opacity="0.3"/>
+    <line x1="346" y1="330" x2="678" y2="330" stroke="url(#lineGrad1)" stroke-width="6" stroke-opacity="0.3"/>
+
+    <!-- Outer nodes -->
+    <circle cx="180" cy="220" r="42" fill="url(#nodeGrad)" filter="url(#glow)"/>
+    <circle cx="180" cy="220" r="22" fill="#fff" fill-opacity="0.9"/>
+    <circle cx="844" cy="220" r="42" fill="url(#nodeGrad)" filter="url(#glow)"/>
+    <circle cx="844" cy="220" r="22" fill="#fff" fill-opacity="0.9"/>
+
+    <!-- Mid nodes -->
+    <circle cx="346" cy="330" r="32" fill="#a78bfa" fill-opacity="0.9" filter="url(#softglow)"/>
+    <circle cx="346" cy="330" r="16" fill="#fff" fill-opacity="0.85"/>
+    <circle cx="678" cy="330" r="32" fill="#4d9fff" fill-opacity="0.9" filter="url(#softglow)"/>
+    <circle cx="678" cy="330" r="16" fill="#fff" fill-opacity="0.85"/>
+
+    <!-- Center top node (brightest — the "brain" center) -->
+    <circle cx="512" cy="130" r="58" fill="url(#nodeGrad)" filter="url(#glowStrong)"/>
+    <circle cx="512" cy="130" r="32" fill="#fff" fill-opacity="0.95"/>
+    <circle cx="512" cy="130" r="14" fill="url(#nodeGrad)"/>
+  </g>
+</svg>

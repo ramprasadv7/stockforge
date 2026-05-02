@@ -1,0 +1,2810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockForge Mentor</title>
+  <style>
+    @font-face { font-family: 'Fira Sans'; src: url('fonts/FiraSans-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Fira Sans'; src: url('fonts/FiraSans-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Fira Sans'; src: url('fonts/FiraSans-SemiBold.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Fira Sans'; src: url('fonts/FiraSans-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Fira Code'; src: url('fonts/FiraCode-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Fira Code'; src: url('fonts/FiraCode-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Fira Code'; src: url('fonts/FiraCode-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+  </style>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Title Bar -->
+  <div class="titlebar">
+    <!-- Top row: logo + right controls (drag zone) -->
+    <div class="titlebar-top">
+    <div class="titlebar-logo">
+      <svg viewBox="0 0 48 48" width="26" height="26" class="logo-svg">
+        <defs>
+          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f1a2e"/>
+            <stop offset="100%" stop-color="#0a1628"/>
+          </linearGradient>
+          <linearGradient id="chartGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#22C55E" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#22C55E" stop-opacity="0.4"/>
+          </linearGradient>
+          <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4d9fff"/>
+            <stop offset="100%" stop-color="#a78bfa"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="1.2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <!-- Background -->
+        <rect width="48" height="48" rx="11" fill="url(#bgGrad)"/>
+        <rect width="48" height="48" rx="11" fill="none" stroke="#1e3a5f" stroke-width="1"/>
+        <!-- Chart bars (bottom) -->
+        <rect x="7" y="32" width="5" height="8" rx="1.5" fill="url(#chartGrad)"/>
+        <rect x="14" y="27" width="5" height="13" rx="1.5" fill="url(#chartGrad)"/>
+        <rect x="21" y="30" width="5" height="10" rx="1.5" fill="url(#chartGrad)"/>
+        <rect x="28" y="23" width="5" height="17" rx="1.5" fill="url(#chartGrad)"/>
+        <rect x="35" y="18" width="5" height="22" rx="1.5" fill="#22C55E" fill-opacity="0.7"/>
+        <!-- Trend line over bars -->
+        <polyline points="9,31 16,26 23,29 30,22 38,16" fill="none" stroke="#22C55E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+        <!-- AI circuit nodes (top) -->
+        <circle cx="12" cy="13" r="2.5" fill="url(#nodeGrad)" filter="url(#glow)"/>
+        <circle cx="24" cy="9"  r="2.5" fill="url(#nodeGrad)" filter="url(#glow)"/>
+        <circle cx="36" cy="13" r="2.5" fill="url(#nodeGrad)" filter="url(#glow)"/>
+        <circle cx="18" cy="18" r="1.8" fill="#a78bfa" fill-opacity="0.8"/>
+        <circle cx="30" cy="18" r="1.8" fill="#4d9fff" fill-opacity="0.8"/>
+        <!-- Circuit connections -->
+        <line x1="12" y1="13" x2="24" y2="9"  stroke="#4d9fff" stroke-width="1" stroke-opacity="0.6"/>
+        <line x1="24" y1="9"  x2="36" y2="13" stroke="#a78bfa" stroke-width="1" stroke-opacity="0.6"/>
+        <line x1="12" y1="13" x2="18" y2="18" stroke="#4d9fff" stroke-width="1" stroke-opacity="0.5"/>
+        <line x1="36" y1="13" x2="30" y2="18" stroke="#a78bfa" stroke-width="1" stroke-opacity="0.5"/>
+        <line x1="18" y1="18" x2="24" y2="9"  stroke="#4d9fff" stroke-width="0.8" stroke-opacity="0.3"/>
+        <line x1="30" y1="18" x2="24" y2="9"  stroke="#a78bfa" stroke-width="0.8" stroke-opacity="0.3"/>
+        <!-- Center pulse dot -->
+        <circle cx="24" cy="9" r="1" fill="#fff" fill-opacity="0.9"/>
+      </svg>
+      <span class="logo-text">StockForge Mentor</span>
+    </div>
+    <!-- Top row: only status indicators (pure drag zone) -->
+    <div class="titlebar-right">
+      <span class="price-source-label" id="priceSourceLabel">Last Close</span>
+      <span class="market-status" id="marketStatus">● Market</span>
+    </div>
+    </div> <!-- end titlebar-top -->
+
+    <!-- Bottom row: tabs only (no drag) -->
+    <div class="titlebar-bottom">
+      <button class="tab-btn active" data-tab="watchlist">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        Watchlist
+      </button>
+      <button class="tab-btn" data-tab="trading">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        Trading
+      </button>
+      <button class="tab-btn" data-tab="portfolio">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        Portfolio
+      </button>
+      <button class="tab-btn" data-tab="suggestions">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Ideas
+      </button>
+      <button class="tab-btn" data-tab="news">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8z"/></svg>
+        News
+      </button>
+      <button class="tab-btn" data-tab="toolshub">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Tools
+      </button>
+      <button class="tab-btn" data-tab="signals">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Signals
+      </button>
+      <button class="tab-btn" data-tab="kalshi">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+        Kalshi
+      </button>
+      <button class="tab-btn" data-tab="brokerage">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Brokerage
+      </button>
+      <button class="tab-btn" data-tab="research">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Research
+      </button>
+
+      <!-- Separator -->
+      <div class="titlebar-bottom-sep"></div>
+
+      <!-- Action buttons -->
+      <button class="btn-morning-brief" id="titlebarBriefBtn" title="Morning Brief">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        Brief
+      </button>
+      <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle theme">
+        <svg id="themeIconDark" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="themeIconLight" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="btn-auto-mode" id="autoModeBtn" title="Auto Trading Mode">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span id="autoModeBtnLabel">Auto</span>
+      </button>
+      <button class="btn-ai-settings" id="aiSettingsBtn" title="AI Settings">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        AI
+      </button>
+      <button class="alert-bell-btn" id="alertBellBtn" title="Smart Alerts">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="alert-bell-badge hidden" id="alertBellBadge">0</span>
+      </button>
+
+    </div> <!-- end titlebar-bottom -->
+  </div>
+
+  <!-- AI Settings Modal -->
+  <div class="ai-settings-overlay hidden" id="aiSettingsOverlay">
+    <div class="ai-settings-modal">
+      <div class="ai-settings-header">
+        <div class="ai-settings-title"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span>️ AI Settings</div>
+        <button class="ai-settings-close" id="aiSettingsClose"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="ai-settings-body" id="aiSettingsModalBody">
+        <div class="ais-layout">
+           <!-- Left: Provider Selector + Status -->
+          <div class="ais-left">
+            <div class="card">
+              <div class="card-header">
+                <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg></span> AI Provider</h2>
+              </div>
+              <div class="ais-provider-list" id="aisProviderList"></div>
+            </div>
+            <!-- Finnhub Key -->
+            <div class="card">
+              <div class="card-header">
+                <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span> Data API Key</h2>
+              </div>
+              <div style="padding:12px 14px">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.5">Optional — free key from <strong>finnhub.io</strong>. Improves rate limits for stock data, news & validation. Without it, a shared key is used.</div>
+                <div class="ais-input-wrap">
+                  <input type="password" id="aisFinnhubKey" class="text-input" placeholder="Your Finnhub API key..." autocomplete="off"/>
+                  <button class="ais-eye-btn" data-target="aisFinnhubKey">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                  <button class="btn-primary btn-sm" id="aisFinnhubSave">Save Key</button>
+                  <a href="https://finnhub.io/register" style="font-size:10px;color:var(--blue);text-decoration:none" target="_blank">Get free key →</a>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg></span> Connection Status</h2>
+                <button class="btn-icon" id="aisRefreshStatus" title="Refresh status">↻</button>
+              </div>
+              <div id="aisStatusBody"><div class="loading-row">Checking...</div></div>
+            </div>
+          </div>
+          <!-- Right: Provider Config Panels -->
+          <div class="ais-right">
+            <!-- OpenCode -->
+            <div class="ais-panel" id="aisPanel-opencode">
+              <div class="card">
+                <div class="card-header">
+                  <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> OpenCode</h2>
+                </div>
+                <div class="ais-config-body">
+                  <div style="padding:8px 0;font-size:11px;color:var(--text2);line-height:1.6">
+                    Routes through your local <strong>OpenCode</strong> app — works with any model you've configured there (Claude, GPT-4, Gemini, Groq, DeepSeek, local models, etc.).<br><br>
+                    No API keys needed here — managed entirely by OpenCode.
+                  </div>
+                  <div id="aisOcStatus" style="font-size:11px;padding:6px 10px;border-radius:var(--radius-sm);background:var(--bg4);color:var(--text2);margin-bottom:10px">Checking...</div>
+                  <div class="ais-provider-actions">
+                    <button class="btn-secondary btn-sm" id="aisBtnTest-opencode">Test Connection</button>
+                    <button class="btn-primary btn-sm" id="aisSave-opencode">Set Active</button>
+                  </div>
+                  <div class="ais-test-result hidden" id="aisTestResult-opencode"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Anthropic -->
+            <div class="ais-panel hidden" id="aisPanel-anthropic">
+              <div class="card">
+                <div class="card-header">
+                  <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.73A3 3 0 0 1 4.46 9.5a2.5 2.5 0 0 1 5.04-5z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.73A3 3 0 0 0 19.54 9.5a2.5 2.5 0 0 0-5.04-5z"/></svg></span> Anthropic (Claude)</h2>
+                </div>
+                <div class="ais-config-body">
+                  <div class="form-group">
+                    <label>API Key</label>
+                    <div class="ais-input-wrap">
+                      <input type="password" id="aisAnthropicKey" class="text-input" placeholder="sk-ant-..." autocomplete="off"/>
+                      <button class="ais-eye-btn" data-target="aisAnthropicKey">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-top:8px">
+                    <label>Model</label>
+                    <select id="aisAnthropicModel" class="select-input">
+                      <option value="claude-sonnet-4-5">claude-sonnet-4-5 (recommended)</option>
+                      <option value="claude-haiku-4-5">claude-haiku-4-5 (faster)</option>
+                      <option value="claude-opus-4-5">claude-opus-4-5 (most capable)</option>
+                    </select>
+                  </div>
+                  <div class="ais-provider-actions" style="margin-top:12px">
+                    <button class="btn-secondary btn-sm" id="aisBtnTest-anthropic">Test Connection</button>
+                    <button class="btn-primary btn-sm" id="aisSave-anthropic">Save & Set Active</button>
+                  </div>
+                  <div class="ais-test-result hidden" id="aisTestResult-anthropic"></div>
+                </div>
+              </div>
+            </div>
+            <!-- OpenAI -->
+            <div class="ais-panel hidden" id="aisPanel-openai">
+              <div class="card">
+                <div class="card-header">
+                  <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg></span> OpenAI (GPT)</h2>
+                </div>
+                <div class="ais-config-body">
+                  <div class="form-group">
+                    <label>API Key</label>
+                    <div class="ais-input-wrap">
+                      <input type="password" id="aisOpenaiKey" class="text-input" placeholder="sk-..." autocomplete="off"/>
+                      <button class="ais-eye-btn" data-target="aisOpenaiKey">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-top:8px">
+                    <label>Model</label>
+                    <select id="aisOpenaiModel" class="select-input">
+                      <option value="gpt-4o">gpt-4o (recommended)</option>
+                      <option value="gpt-4o-mini">gpt-4o-mini (faster)</option>
+                      <option value="gpt-4-turbo">gpt-4-turbo</option>
+                    </select>
+                  </div>
+                  <div class="ais-provider-actions" style="margin-top:12px">
+                    <button class="btn-secondary btn-sm" id="aisBtnTest-openai">Test Connection</button>
+                    <button class="btn-primary btn-sm" id="aisSave-openai">Save & Set Active</button>
+                  </div>
+                  <div class="ais-test-result hidden" id="aisTestResult-openai"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Ollama -->
+            <div class="ais-panel hidden" id="aisPanel-ollama">
+              <div class="card">
+                <div class="card-header">
+                  <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> Ollama (Local)</h2>
+                </div>
+                <div class="ais-config-body">
+                  <div class="form-group">
+                    <label>Server URL</label>
+                    <input type="text" id="aisOllamaUrl" class="text-input" placeholder="http://localhost:11434"/>
+                  </div>
+                  <div class="form-group" style="margin-top:8px">
+                    <label style="display:flex;align-items:center;justify-content:space-between">
+                      Model
+                      <button class="btn-secondary btn-sm" id="aisOllamaRefreshModels" style="font-size:9px;padding:2px 8px">↻ Detect</button>
+                    </label>
+                    <select id="aisOllamaModel" class="select-input" style="margin-top:5px">
+                      <option value="llama3.2">llama3.2 (default)</option>
+                    </select>
+                    <div style="font-size:10px;color:var(--text3);margin-top:4px">Click "Detect" to load available models from your Ollama installation</div>
+                  </div>
+                  <div class="ais-provider-actions" style="margin-top:12px">
+                    <button class="btn-secondary btn-sm" id="aisBtnTest-ollama">Test Connection</button>
+                    <button class="btn-primary btn-sm" id="aisSave-ollama">Save & Set Active</button>
+                  </div>
+                  <div class="ais-test-result hidden" id="aisTestResult-ollama"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kalshi Place Bet Modal -->
+  <div class="modal hidden" id="modalKalshiBet">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Place Kalshi Bet</h3>
+        <button class="modal-close" data-modal="modalKalshiBet"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div id="kalshiBetMarketInfo" style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;font-size:12px"></div>
+        <div class="form-group">
+          <label>Side</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="kalshi-side-btn active" id="kalshiBetYes" onclick="kalshiSelectSide('yes')">YES</button>
+            <button class="kalshi-side-btn" id="kalshiBetNo" onclick="kalshiSelectSide('no')">NO</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px">
+          <label>Price (cents, 1-99)</label>
+          <input type="number" id="kalshiBetPrice" class="text-input" min="1" max="99" placeholder="e.g. 55"/>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">Current market price shown above. 55¢ = 55% implied probability.</div>
+        </div>
+        <div class="form-group" style="margin-top:10px">
+          <label>Contracts</label>
+          <input type="number" id="kalshiBetCount" class="text-input" min="1" value="1" placeholder="1"/>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px" id="kalshiBetCost">Cost: —</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalKalshiBet">Cancel</button>
+        <button class="btn-primary" id="kalshiBetConfirm">Place Bet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Morning Brief Overlay -->
+  <div class="brief-overlay hidden" id="briefOverlay">
+    <div class="brief-modal">
+      <div class="brief-modal-header">
+        <div class="brief-modal-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          Morning Brief
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="brief-refresh-btn" id="briefRefreshBtnOverlay">↻ Refresh</button>
+          <button class="brief-close" id="briefCloseBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="brief-modal-body" id="briefContent">
+        <div class="empty-state">Loading your morning brief...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Smart Alert Panel -->
+  <div class="alert-panel hidden" id="alertPanel">
+    <div class="alert-panel-header">
+      <div class="alert-panel-title">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="margin-right:6px">
+          <path d="M10 2a6 6 0 0 0-6 6v3l-1.5 2.5h15L16 11V8a6 6 0 0 0-6-6z" stroke="#ffd166" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M8 16a2 2 0 0 0 4 0" stroke="#ffd166" stroke-width="1.5"/>
+        </svg>
+        Smart Alerts
+      </div>
+      <div class="alert-panel-actions">
+        <button class="alert-panel-clear" id="alertClearAll">Clear All</button>
+        <button class="alert-panel-close" id="alertPanelClose"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+    </div>
+    <div class="alert-panel-scan-info" id="alertScanInfo">Scanning every 60s with price refresh · Background scan every 5min</div>
+    <div class="alert-panel-movers">
+      <button class="alert-movers-btn" id="scanMoversBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Scan Market Movers Now</button>
+      <select class="alert-movers-threshold" id="moversThreshold">
+        <option value="5">5%+ moves</option>
+        <option value="10" selected>10%+ moves</option>
+        <option value="20">20%+ moves</option>
+        <option value="50">50%+ moves</option>
+      </select>
+    </div>
+    <div class="alert-panel-body" id="alertPanelBody">
+      <div class="alert-empty">
+        <div style="font-size:24px;margin-bottom:8px"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span></div>
+        <div>No alerts yet. Alerts will appear here when significant events are detected.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Market Status Banner -->
+  <div class="market-banner" id="marketBanner">
+    <div class="market-banner-left">
+      <span class="market-banner-dot" id="marketBannerDot"></span>
+      <span class="market-banner-label" id="marketBannerLabel">Checking market...</span>
+    </div>
+    <div class="market-banner-right">
+      <span class="market-banner-detail" id="marketBannerDetail"></span>
+      <span class="market-banner-time" id="marketBannerTime"></span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: DAY TRADING & OPTIONS                               -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: PAPER TRADING                                          -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  
+
+  <!-- Paper Trade Manual Entry Modal -->
+  <div class="modal hidden" id="modalPaperTrade">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor"/><circle cx="18" cy="13" r="1" fill="currentColor"/></svg></span> Paper Trade — Place Order</h3>
+        <button class="modal-close" data-modal="modalPaperTrade"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Stock Ticker *</label>
+            <input type="text" id="ptTicker" class="text-input" placeholder="NVDA" maxlength="10"/>
+          </div>
+          <div class="form-group">
+            <label>Option Type *</label>
+            <select id="ptType" class="select-input">
+              <option value="CALL">CALL</option>
+              <option value="PUT">PUT</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Strike Price *</label>
+            <input type="number" id="ptStrike" class="text-input" placeholder="195" step="0.5"/>
+          </div>
+          <div class="form-group">
+            <label>Expiry Date *</label>
+            <input type="date" id="ptExpiry" class="text-input"/>
+          </div>
+          <div class="form-group">
+            <label>Premium Per Share *</label>
+            <input type="number" id="ptPremium" class="text-input" placeholder="3.50" step="0.01"/>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px">Price shown on Robinhood/Tastytrade</div>
+          </div>
+          <div class="form-group">
+            <label>Contracts *</label>
+            <input type="number" id="ptContracts" class="text-input" value="1" min="1"/>
+          </div>
+        </div>
+        <div class="contract-calc-box" id="ptCalcBox" style="display:none">
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Total Cost</span>
+            <span class="contract-calc-value" id="ptTotalCost">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Formula</span>
+            <span class="contract-calc-formula" id="ptFormula">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Cash After Trade</span>
+            <span class="contract-calc-value" id="ptCashAfter">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Max Loss</span>
+            <span class="contract-calc-value red" id="ptMaxLoss">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalPaperTrade">Cancel</button>
+        <button class="btn-primary" id="ptConfirm"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor"/><circle cx="18" cy="13" r="1" fill="currentColor"/></svg></span> Place Paper Trade</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paper Close Position Modal -->
+  <div class="modal hidden" id="modalPaperClose">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Close Position — <span id="paperCloseLabel"></span></h3>
+        <button class="modal-close" data-modal="modalPaperClose"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="paper-close-info" id="paperCloseInfo"></div>
+        <div class="form-group" style="margin-top:14px">
+          <label>Current Premium (per share)</label>
+          <input type="number" id="paperClosePremium" class="text-input" placeholder="e.g. 6.20" step="0.01"/>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">Check current option price on Robinhood/Tastytrade</div>
+        </div>
+        <div class="contract-calc-box" id="paperCloseCalcBox" style="display:none;margin-top:12px">
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Proceeds</span>
+            <span class="contract-calc-value" id="paperCloseProceeds">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">P&L</span>
+            <span class="contract-calc-value" id="paperClosePnl">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Return</span>
+            <span class="contract-calc-value" id="paperCloseReturn">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="paperExpireBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v2h8v-2"/><path d="m12.5 17-.5-1-.5 1h1z"/><path d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20"/></svg></span> Expire Worthless</button>
+        <button class="btn-secondary" data-modal="modalPaperClose">Cancel</button>
+        <button class="btn-primary" id="paperCloseConfirm"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> Close Position</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: WATCHLIST                                              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="tab-content active" id="tab-watchlist">
+    <div class="two-col-layout">
+
+      <!-- LEFT: Stock Watchlist -->
+      <div class="left-col">
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span> Stocks to Watch</h2>
+            <div class="card-actions">
+              <button class="btn-icon" id="wlRefreshPrices" title="Refresh prices">↻</button>
+              <button class="btn-primary btn-sm" id="wlAddStock">+ Add Stock</button>
+            </div>
+          </div>
+          <div class="watchlist watchlist-scrollable" id="ltWatchlist">
+            <div class="loading-row">Loading...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M9 8h4.5a2 2 0 0 1 0 4H9v4h4.5a2 2 0 0 0 0-4"/><line x1="9" y1="12" x2="13.5" y2="12"/></svg></span> Crypto to Watch</h2>
+            <div class="card-actions">
+              <button class="btn-primary btn-sm" id="wlAddCrypto">+ Add Coin</button>
+            </div>
+          </div>
+          <div class="watchlist watchlist-scrollable" id="ltCryptoWatchlistEl">
+            <div class="loading-row">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Quick Analysis -->
+      <div class="right-col">
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> Quick Analysis</h2>
+            <span class="hint">Click any stock to analyze</span>
+          </div>
+          <div class="signal-controls">
+            <select id="wlAnalyzeTicker" class="select-input">
+              <option value="">Select a stock...</option>
+            </select>
+            <button class="btn-generate" id="wlAnalyzeBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analyze</button>
+          </div>
+          <div id="wlAnalysisOutput">
+            <div class="empty-state">Select a stock from your watchlist to get AI analysis.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-trading">
+    <div class="hub-subtabs">
+      <button class="hub-subtab active" data-hubtab="daytrading" data-hub="trading"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> Day Trading</button>
+      <button class="hub-subtab" data-hubtab="paper" data-hub="trading"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Paper Trade</button>
+    </div>
+    <div class="hub-panel active" id="hubpanel-daytrading">
+      <div class="two-col-layout">
+
+      <!-- LEFT COLUMN -->
+      <div class="left-col">
+
+        <!-- Unified Watchlist (Stocks + Crypto) -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span> Watchlist</h2>
+            <div class="card-actions">
+              <button class="btn-icon" id="dtRefreshPrices" title="Refresh prices">↻</button>
+              <button class="btn-primary btn-sm" id="dtAddStock">+ Stock</button>
+              <button class="btn-primary btn-sm" id="dtAddCryptoFromWatchlist">+ Crypto</button>
+            </div>
+          </div>
+          <div class="watchlist-section-label">Stocks</div>
+          <div class="watchlist watchlist-scrollable" id="dtWatchlist">
+            <div class="loading-row">Loading prices...</div>
+          </div>
+          <div class="watchlist-section-label" style="margin-top:8px">Crypto</div>
+          <div class="watchlist watchlist-scrollable" id="dtCryptoWatchlistInline">
+            <div class="loading-row">Loading crypto...</div>
+          </div>
+        </div>
+
+        <!-- Open Contracts -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> My Open Contracts</h2>
+            <button class="btn-primary btn-sm" id="dtAddContract">+ Log Trade</button>
+          </div>
+          <div id="dtContracts">
+            <div class="empty-state">No open contracts. Generate a signal and log your first trade.</div>
+          </div>
+        </div>
+
+        <!-- Closed Trades Performance -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Performance</h2>
+          </div>
+          <div id="dtPerformance">
+            <div class="perf-grid">
+              <div class="perf-item">
+                <div class="perf-label">Win Rate</div>
+                <div class="perf-value" id="dtWinRate">—</div>
+              </div>
+              <div class="perf-item">
+                <div class="perf-label">Net P&L</div>
+                <div class="perf-value" id="dtNetPnl">—</div>
+              </div>
+              <div class="perf-item">
+                <div class="perf-label">Total Trades</div>
+                <div class="perf-value" id="dtTotalTrades">—</div>
+              </div>
+              <div class="perf-item">
+                <div class="perf-label">Best Trade</div>
+                <div class="perf-value green" id="dtBestTrade">—</div>
+              </div>
+            </div>
+          </div>
+          <div id="dtClosedTrades" class="closed-trades-list"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="right-col">
+
+        <!-- AI Signal Generator -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> AI Signal Generator</h2>
+          </div>
+          <div class="signal-controls">
+            <select id="dtSignalTicker" class="select-input">
+              <option value="">Select a stock...</option>
+            </select>
+            <button class="btn-crew-signal" id="dtCrewSignalBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> Generate Signal</button>
+          </div>
+          <div id="dtSignalOutput" class="signal-output hidden">
+            <div class="signal-loading hidden" id="dtSignalLoading">
+              <div class="spinner"></div>
+              <span id="dtSignalStatus">Analyzing...</span>
+            </div>
+            <div id="dtSignalCard" class="signal-card hidden"></div>
+          </div>
+        </div>
+
+        <!-- Contract Monitor -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Contract Monitor</h2>
+            <span class="hint">Click a contract to analyze</span>
+          </div>
+          <div id="dtMonitorOutput">
+            <div class="empty-state">Select a contract from "My Open Contracts" to get AI analysis.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div>
+    <div class="hub-panel hidden" id="hubpanel-paper">
+      <div class="paper-layout">
+
+      <!-- TOP: Account Summary Bar -->
+      <div class="paper-account-bar" id="paperAccountBar">
+        <div class="paper-account-item">
+          <div class="paper-account-label">Virtual Cash</div>
+          <div class="paper-account-value" id="paperCash">$10,000</div>
+        </div>
+        <div class="paper-account-item">
+          <div class="paper-account-label">Open Positions</div>
+          <div class="paper-account-value" id="paperPositionsValue">$0</div>
+        </div>
+        <div class="paper-account-item">
+          <div class="paper-account-label">Total Value</div>
+          <div class="paper-account-value" id="paperTotalValue">$10,000</div>
+        </div>
+        <div class="paper-account-item">
+          <div class="paper-account-label">All-time P&L</div>
+          <div class="paper-account-value" id="paperAllTimePnl">$0</div>
+        </div>
+        <div class="paper-account-item">
+          <div class="paper-account-label">Win Rate</div>
+          <div class="paper-account-value" id="paperWinRate">—</div>
+        </div>
+        <div class="paper-account-item">
+          <div class="paper-account-label">Trades</div>
+          <div class="paper-account-value" id="paperTradeCount">0</div>
+        </div>
+        <div class="paper-account-actions">
+          <button class="btn-secondary btn-sm" id="paperResetBtn">↺ Reset</button>
+          <button class="btn-primary btn-sm" id="paperManualTradeBtn">+ Manual Trade</button>
+        </div>
+      </div>
+
+      <!-- MAIN: Two columns -->
+      <div class="paper-cols">
+
+        <!-- LEFT: Open Positions + Signal Generator -->
+        <div class="paper-left">
+
+          <!-- Open Positions -->
+          <div class="card">
+            <div class="card-header">
+              <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Open Positions</h2>
+              <span class="hint" id="paperModeLabel"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor"/><circle cx="18" cy="13" r="1" fill="currentColor"/></svg></span> Practice Mode — No real money</span>
+            </div>
+            <div id="paperPositions">
+              <div class="paper-empty">
+                <div class="paper-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></div>
+                <div>No open positions yet.</div>
+                <div style="margin-top:6px;font-size:11px;color:var(--text3)">Generate an AI signal on the Day Trading tab → click <b>Paper Trade This</b></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- How to paper trade tip -->
+          <div class="card">
+            <div class="card-header"><h2><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span> How to Paper Trade</h2></div>
+            <div class="paper-howto">
+              <div class="paper-howto-step"><span class="step-num">1</span><span>Go to <b><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span> Day Trading</b> tab</span></div>
+              <div class="paper-howto-step"><span class="step-num">2</span><span>Select a stock → click <b><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Generate Signal</b></span></div>
+              <div class="paper-howto-step"><span class="step-num">3</span><span>Review the signal → click <b><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor"/><circle cx="18" cy="13" r="1" fill="currentColor"/></svg></span> Paper Trade This</b></span></div>
+              <div class="paper-howto-step"><span class="step-num">4</span><span>Position appears here with live P&L tracking</span></div>
+              <div class="paper-howto-step"><span class="step-num">5</span><span>Click <b><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> AI Advice</b> to know when to close</span></div>
+              <button class="btn-primary" style="width:100%;margin-top:12px" onclick="switchToTab('daytrading')">Go to Day Trading →</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT: Closed Trades + AI Advice -->
+        <div class="paper-right">
+
+          <!-- AI Position Advice -->
+          <div class="card">
+            <div class="card-header">
+              <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> AI Position Advice</h2>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="hint" id="paperAdviceLabel">Auto-analyzing...</span>
+                <button class="btn-icon" id="paperAdviceRefreshBtn" title="Refresh AI advice" style="font-size:12px">↻</button>
+              </div>
+            </div>
+            <div id="paperAdviceOutput">
+              <div class="paper-empty">
+                <div class="paper-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></div>
+                <div>Click a position or hit ↻ to get AI advice.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Closed Trades -->
+          <div class="card">
+            <div class="card-header">
+              <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Trade History</h2>
+              <span class="hint" id="paperClosedCount">0 trades</span>
+            </div>
+            <div id="paperClosedTrades" style="max-height:280px;overflow-y:auto;">
+              <div class="empty-state">No closed trades yet.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-portfolio">
+    <div class="hub-subtabs">
+      <button class="hub-subtab active" data-hubtab="longterm" data-hub="portfolio"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg> Long Term</button>
+      <button class="hub-subtab" data-hubtab="crypto" data-hub="portfolio"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 9.5c.5-1 1.5-1.5 2.5-1.5 1.7 0 3 1.1 3 2.5 0 2-3 2.5-3 4.5"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> Crypto</button>
+    </div>
+    <div class="hub-panel active" id="hubpanel-longterm">
+      <div class="two-col-layout">
+
+      <!-- LEFT COLUMN -->
+      <div class="left-col">
+
+        <!-- Portfolio -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span> My Portfolio</h2>
+            <div class="card-actions">
+              <button class="btn-icon" id="ltRerateBtn" title="Re-rate all holdings with latest AI ratings">⭐</button>
+              <button class="btn-primary btn-sm" id="ltAddStock">+ Add Stock I Own</button>
+            </div>
+          </div>
+          <div id="ltPortfolioTable">
+            <div class="loading-row">Loading portfolio...</div>
+          </div>
+          <div class="portfolio-totals" id="ltTotals"></div>
+        </div>
+
+
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="right-col">
+
+        <!-- AI Stock Analysis -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> AI Stock Analysis</h2>
+            <span class="hint">Click any stock to analyze</span>
+          </div>
+          <div class="signal-controls">
+            <select id="ltAnalyzeTicker" class="select-input">
+              <option value="">Select a stock...</option>
+            </select>
+            <button class="btn-generate" id="ltAnalyzeBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analyze</button>
+          </div>
+          <div id="ltAnalysisOutput">
+            <div class="empty-state">Select a stock from your portfolio or watchlist to get AI analysis.</div>
+          </div>
+        </div>
+
+        <!-- Weekly Summary -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Weekly Summary</h2>
+            <button class="btn-secondary btn-sm" id="ltWeeklySummary"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span> Generate</button>
+          </div>
+          <div id="ltSummaryOutput">
+            <div class="empty-state">Click Generate to get your weekly portfolio summary.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div>
+    <div class="hub-panel hidden" id="hubpanel-crypto">
+      <div class="two-col-layout">
+
+      <!-- LEFT COLUMN -->
+      <div class="left-col">
+
+        <!-- Crypto Watchlist (Trading) -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span> Crypto Watchlist</h2>
+            <div class="card-actions">
+              <button class="btn-icon" id="dtCryptoRefresh" title="Refresh">↻</button>
+              <button class="btn-primary btn-sm" id="dtAddCrypto">+ Add Coin</button>
+            </div>
+          </div>
+          <div class="watchlist" id="dtCryptoWatchlist">
+            <div class="loading-row">Loading crypto prices...</div>
+          </div>
+        </div>
+
+        <!-- Crypto Portfolio -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M9 8h4.5a2 2 0 0 1 0 4H9v4h4.5a2 2 0 0 0 0-4"/><line x1="9" y1="12" x2="13.5" y2="12"/></svg></span> My Crypto Holdings</h2>
+            <button class="btn-primary btn-sm" id="ltAddCryptoPortfolio">+ Add Coin I Own</button>
+          </div>
+          <div id="ltCryptoPortfolioTable">
+            <div class="empty-state">No crypto yet. Click + Add Coin I Own.</div>
+          </div>
+          <div class="portfolio-totals" id="ltCryptoTotals"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="right-col">
+
+        <!-- Crypto AI Signal -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Crypto AI Signal</h2>
+          </div>
+          <div class="signal-controls">
+            <select id="dtCryptoSignalTicker" class="select-input">
+              <option value="">Select a coin...</option>
+            </select>
+            <button class="btn-generate" id="dtGenerateCryptoSignal"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Generate Crypto Signal</button>
+          </div>
+          <div id="dtCryptoSignalOutput" class="signal-output hidden">
+            <div class="signal-loading hidden" id="dtCryptoSignalLoading">
+              <div class="spinner"></div>
+              <span id="dtCryptoSignalStatus">Analyzing...</span>
+            </div>
+            <div id="dtCryptoSignalCard" class="signal-card hidden"></div>
+          </div>
+        </div>
+
+        <!-- AI Crypto Analysis -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> AI Crypto Analysis</h2>
+            <span class="hint">Click any coin to analyze</span>
+          </div>
+          <div class="signal-controls">
+            <select id="ltCryptoAnalyzeTicker" class="select-input">
+              <option value="">Select a coin...</option>
+            </select>
+            <button class="btn-generate" id="ltCryptoAnalyzeBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analyze Crypto</button>
+          </div>
+          <div id="ltCryptoAnalysisOutput">
+            <div class="empty-state">Select a coin to get AI analysis.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-toolshub">
+    <div class="hub-subtabs">
+      <button class="hub-subtab active" data-hubtab="tools" data-hub="toolshub"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Tools</button>
+      <button class="hub-subtab" data-hubtab="journal" data-hub="toolshub"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Journal</button>
+      <button class="hub-subtab" data-hubtab="alertlog" data-hub="toolshub"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Alert Log</button>
+    </div>
+    <div class="hub-panel active" id="hubpanel-tools">
+      <div class="tools-layout">
+
+      <!-- LEFT COL -->
+      <div class="tools-left">
+
+        <!-- Ticker Input -->
+        <div class="card">
+          <div class="card-header"><h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Ticker</h2></div>
+          <div style="padding:12px;display:flex;gap:8px">
+            <input type="text" id="toolsTicker" class="text-input" placeholder="e.g. AAPL, NVDA..." maxlength="10"/>
+            <button class="btn-primary" id="toolsLoadBtn">Load</button>
+          </div>
+          <div class="tools-quick-tickers" id="toolsQuickTickers"></div>
+        </div>
+
+        <!-- Price Alerts -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span> Price Alerts</h2>
+            <button class="btn-primary btn-sm" id="alertAddBtn">+ Add Alert</button>
+          </div>
+          <div id="alertsList"><div class="empty-state">No alerts set.</div></div>
+          <!-- Add Alert Form -->
+          <div class="alert-form hidden" id="alertForm">
+            <div style="padding:12px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border)">
+              <div style="display:flex;gap:8px">
+                <input type="text" id="alertTicker" class="text-input" placeholder="Ticker" style="width:80px"/>
+                <select id="alertCondition" class="select-input" style="width:100px">
+                  <option value="above">Above ↑</option>
+                  <option value="below">Below ↓</option>
+                </select>
+                <input type="number" id="alertPrice" class="text-input" placeholder="Price" step="0.01"/>
+              </div>
+              <input type="text" id="alertNote" class="text-input" placeholder="Note (optional)"/>
+              <div style="display:flex;gap:8px">
+                <button class="btn-primary btn-sm" id="alertSaveBtn">Save Alert</button>
+                <button class="btn-secondary btn-sm" id="alertCancelBtn">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Earnings Calendar -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Earnings Calendar</h2>
+            <span class="hint">Next 30 days</span>
+          </div>
+          <div id="earningsCalendar"><div class="loading-row">Loading...</div></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COL -->
+      <div class="tools-right">
+
+        <!-- Technical Chart -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span> Technical Chart</h2>
+            <div class="card-actions" id="chartRangeButtons">
+              <button class="chart-range-btn active" data-range="1mo">1M</button>
+              <button class="chart-range-btn" data-range="3mo">3M</button>
+              <button class="chart-range-btn" data-range="6mo">6M</button>
+              <button class="chart-range-btn" data-range="1y">1Y</button>
+            </div>
+          </div>
+          <div id="chartContainer">
+            <div class="empty-state">Select a ticker to view chart.</div>
+          </div>
+        </div>
+
+        <!-- Options Chain -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Options Chain</h2>
+            <div class="card-actions">
+              <span class="hint" style="color:var(--yellow)"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> Estimated</span>
+              <button class="btn-secondary btn-sm" id="optionsLoadBtn" disabled>Generate Chain</button>
+            </div>
+          </div>
+          <div id="optionsContainer">
+            <div class="empty-state">Select a ticker then click Generate Chain.<br><span style="color:var(--text3);font-size:10px">Note: Estimated prices using AI — not real market data.</span></div>
+          </div>
+        </div>
+
+        <!-- Insider Trading -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>️ Insider Transactions</h2>
+            <span class="hint" id="insiderTickerLabel"></span>
+          </div>
+          <div id="insiderContainer">
+            <div class="empty-state">Select a ticker to view insider transactions.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div>
+    <div class="hub-panel hidden" id="hubpanel-journal">
+      <div class="journal-layout">
+
+      <!-- LEFT: Closed Trades to Analyze -->
+      <div class="journal-left">
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> Trade Journal</h2>
+            <span class="hint">Click a trade to analyze</span>
+          </div>
+          <div id="journalTradesList"><div class="loading-row">Loading trades...</div></div>
+        </div>
+
+        <!-- Bias Report -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span> Trading Bias Report</h2>
+            <button class="btn-primary btn-sm" id="biasReportBtn">Analyze All Trades</button>
+          </div>
+          <div id="biasReportOutput">
+            <div class="empty-state" style="font-size:11px">Analyzes ALL your closed trades for behavioral biases — disposition effect, overtrading, anchoring & more.</div>
+          </div>
+        </div>
+
+        <!-- Signal Convergence Scanner -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18h8"/><path d="M3 22h18"/><path d="M14 22a7 7 0 1 0 0-14h-1"/><path d="M9 14h2"/><path d="M9 12a2 2 0 0 1-2-2V6l3-3 3 3v4a2 2 0 0 1-2 2z"/></svg></span> Signal Convergence</h2>
+            <button class="btn-secondary btn-sm" id="convergenceScanBtn" onclick="runConvergenceScan()"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Scan Now</button>
+          </div>
+          <div style="font-size:10px;color:var(--text3);padding:0 0 8px 0">Scans your watchlist for volume spikes, insider buys, news sentiment, earnings windows + Kalshi macro odds</div>
+          <div id="convergenceScanBody">
+            <div class="empty-state">Click <span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Scan Now to find multi-signal setups across your watchlist.</div>
+          </div>
+        </div>
+
+        <!-- Signal Scorecard -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span> Signal Scorecard</h2>
+            <button class="btn-secondary btn-sm" onclick="loadSignalScorecard()">↻ Refresh</button>
+          </div>
+          <div id="signalScorecardBody">
+            <div class="empty-state">Generate signals to start tracking accuracy. Signals are scored automatically after 2 weeks.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Analysis Output -->
+      <div class="journal-right">
+
+        <!-- Morning Brief -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span> Morning Brief</h2>
+            <div class="card-actions">
+              <button class="btn-secondary btn-sm" id="briefRefreshBtn">↻ Refresh</button>
+              <button class="btn-generate" id="briefOpenBtn" style="width:auto;padding:6px 14px;margin:0;font-size:12px"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>️ Open Brief</button>
+            </div>
+          </div>
+          <div id="briefPreview">
+            <div class="empty-state">Click "Open Brief" to generate your AI morning brief.</div>
+          </div>
+        </div>
+
+        <!-- Trade Analysis -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> AI Trade Analysis</h2>
+            <span class="hint" id="journalTradeLabel">Select a trade</span>
+          </div>
+          <div id="journalAnalysisOutput">
+            <div class="empty-state">Select a closed trade from the left to get AI analysis — grade, lessons learned, and what to do differently next time.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div>
+    <div class="hub-panel hidden" id="hubpanel-alertlog">
+      <div class="alertlog-layout">
+
+      <!-- Header controls -->
+      <div class="alertlog-controls card">
+        <div class="alertlog-filters">
+          <select class="select-input alertlog-filter" id="alFilterType">
+            <option value="">All Types</option>
+            <optgroup label="── Pre-Spike Signals ──">
+              <option value="catalyst_news"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span> Catalyst News</option>
+              <option value="sec_filing"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> SEC 8-K Filing</option>
+              <option value="trending"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Trending Ticker</option>
+              <option value="volume_accumulation"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Volume Accumulation</option>
+              <option value="earnings"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Earnings Coming</option>
+            </optgroup>
+            <optgroup label="── Contract Alerts ──">
+              <option value="expiry"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg></span> Expiry</option>
+              <option value="take_profit"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> Take Profit</option>
+              <option value="otm_warning"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>️ OTM Warning</option>
+              <option value="deep_otm"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> Deep OTM</option>
+              <option value="contract_watch"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> AI Watch</option>
+            </optgroup>
+            <optgroup label="── Manual Scan ──">
+              <option value="market_mover"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Market Movers</option>
+            </optgroup>
+          </select>
+          <select class="select-input alertlog-filter" id="alFilterSeverity">
+            <option value="">All Severity</option>
+            <option value="critical"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> Critical</option>
+            <option value="warning"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>️ Warning</option>
+            <option value="info"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span> Info</option>
+          </select>
+          <input type="text" class="text-input alertlog-filter" id="alFilterTicker" placeholder="Filter by ticker..." maxlength="10" />
+          <button class="btn-secondary btn-sm" id="alRefreshBtn">↻ Refresh</button>
+          <button class="btn-secondary btn-sm" id="alClearBtn" style="color:var(--red)"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span> Clear All</button>
+        </div>
+        <div class="alertlog-stats" id="alStats"></div>
+      </div>
+
+      <!-- Log list -->
+      <div class="alertlog-list" id="alertLogList">
+        <div class="loading-row">Loading alert log...</div>
+      </div>
+
+    </div>
+    </div>
+  </div>
+
+
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: LONG TERM INVESTING                                  -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: CRYPTO                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: IDEAS & INVEST (combined Suggestions + Invest)         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-suggestions">
+    <div class="ideas-layout">
+
+      <!-- Sub-tab bar -->
+      <div class="ideas-subtabs">
+        <button class="ideas-subtab active" data-subtab="suggestions"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span> Suggestions</button>
+        <button class="ideas-subtab" data-subtab="invest"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> Invest Planner</button>
+      </div>
+
+      <!-- ── SUB-TAB: SUGGESTIONS ─────────────────────────────── -->
+      <div class="ideas-panel active" id="ideasPanel-suggestions">
+        <div class="sugg-layout">
+
+          <!-- Header: Portfolio Health Bar -->
+          <div class="sugg-header-row">
+            <div class="sugg-portfolio-health" id="suggHealthBar">
+              <div class="sugg-health-left">
+                <div class="sugg-health-label">Portfolio Health</div>
+                <div class="sugg-health-value" id="suggHealthValue">—</div>
+              </div>
+              <div class="sugg-health-stats" id="suggHealthStats"></div>
+              <div class="sugg-health-right">
+                <div class="sugg-div-score-label">Diversification</div>
+                <div class="sugg-div-score" id="suggDivScore">—</div>
+              </div>
+            </div>
+            <div class="sugg-summary-text" id="suggSummaryText"></div>
+          </div>
+
+          <!-- Two columns -->
+          <div class="sugg-cols">
+
+            <!-- LEFT: Long Term Suggestions -->
+            <div class="sugg-col">
+              <div class="sugg-col-header sugg-col-header-lt">
+                <div class="sugg-col-icon">
+                  <svg viewBox="0 0 48 48" width="36" height="36">
+                    <rect width="48" height="48" rx="12" fill="rgba(0,212,170,0.15)"/>
+                    <polyline points="8,36 18,24 26,30 40,12" fill="none" stroke="#00d4aa" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polygon points="40,12 34,14 38,20" fill="#00d4aa"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="sugg-col-title">Long Term Investing</div>
+                  <div class="sugg-col-sub">Personalized to your $<span id="suggPortfolioValue">—</span> portfolio</div>
+                </div>
+                <button class="btn-generate sugg-gen-btn" id="suggLtGenBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Generate</button>
+              </div>
+              <div id="suggLtOutput">
+                <div class="sugg-empty">
+                  <div class="sugg-empty-icon"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span></div>
+                  <div>Click Generate to get personalized buy/sell/hold suggestions with exact dollar amounts based on your portfolio.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT: Options Suggestions -->
+            <div class="sugg-col">
+              <div class="sugg-col-header sugg-col-header-opt">
+                <div class="sugg-col-icon">
+                  <svg viewBox="0 0 48 48" width="36" height="36">
+                    <rect width="48" height="48" rx="12" fill="rgba(124,58,237,0.15)"/>
+                    <path d="M24 8 L28 20 L40 20 L30 28 L34 40 L24 32 L14 40 L18 28 L8 20 L20 20 Z" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linejoin="round"/>
+                    <circle cx="24" cy="24" r="4" fill="#a78bfa"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="sugg-col-title">Options Playbook</div>
+                  <div class="sugg-col-sub">Beginner-friendly · Exact costs · Max loss shown</div>
+                </div>
+                <button class="btn-generate sugg-gen-btn" id="suggOptGenBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Generate</button>
+              </div>
+              <div id="suggOptOutput">
+                <div class="sugg-empty">
+                  <div class="sugg-empty-icon"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span></div>
+                  <div>Click Generate to get your personalized options playbook — specific trades with exact dollar amounts, break-even prices, and exit plans.</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SUB-TAB: INVESTMENT PLANNER ─────────────────────── -->
+      <div class="ideas-panel hidden" id="ideasPanel-invest">
+        <div class="inv-layout">
+
+          <!-- LEFT: Input Panel -->
+          <div class="inv-left">
+
+            <div class="card">
+              <div class="card-header"><h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> Investment Planner</h2></div>
+              <div class="inv-input-body">
+
+                <div class="inv-amount-wrap">
+                  <div class="inv-amount-label">How much do you want to invest?</div>
+                  <div class="inv-amount-input-row">
+                    <span class="inv-dollar-sign">$</span>
+                    <input type="number" id="invAmount" class="inv-amount-input" placeholder="1000" min="100" step="50"/>
+                  </div>
+                  <div class="inv-quick-amounts">
+                    <button class="inv-quick-btn" onclick="invSetAmount(500)">$500</button>
+                    <button class="inv-quick-btn" onclick="invSetAmount(1000)">$1K</button>
+                    <button class="inv-quick-btn" onclick="invSetAmount(2500)">$2.5K</button>
+                    <button class="inv-quick-btn" onclick="invSetAmount(5000)">$5K</button>
+                    <button class="inv-quick-btn" onclick="invSetAmount(10000)">$10K</button>
+                  </div>
+                </div>
+
+                <div class="inv-type-label">What type of investment?</div>
+                <div class="inv-type-selector">
+                  <div class="inv-type-card" id="invTypeOptions" onclick="invSelectType('options')">
+                    <div class="inv-type-icon">
+                      <svg viewBox="0 0 40 40" width="32" height="32">
+                        <rect width="40" height="40" rx="8" fill="rgba(124,58,237,0.15)"/>
+                        <path d="M20 6 L24 16 L34 16 L26 22 L29 32 L20 26 L11 32 L14 22 L6 16 L16 16 Z" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+                        <circle cx="20" cy="20" r="3" fill="#a78bfa"/>
+                      </svg>
+                    </div>
+                    <div class="inv-type-info">
+                      <div class="inv-type-name">Options Trading</div>
+                      <div class="inv-type-desc">Calls & Puts · Leveraged · Higher risk/reward</div>
+                    </div>
+                    <div class="inv-type-check hidden" id="invCheckOptions"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+                  </div>
+
+                  <div class="inv-type-card" id="invTypeLongterm" onclick="invSelectType('longterm')">
+                    <div class="inv-type-icon">
+                      <svg viewBox="0 0 40 40" width="32" height="32">
+                        <rect width="40" height="40" rx="8" fill="rgba(0,212,170,0.12)"/>
+                        <polyline points="6,30 14,20 20,24 30,10 34,14" fill="none" stroke="#00d4aa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <polygon points="34,14 30,12 32,18" fill="#00d4aa"/>
+                      </svg>
+                    </div>
+                    <div class="inv-type-info">
+                      <div class="inv-type-name">Long Term Stocks</div>
+                      <div class="inv-type-desc">Buy & Hold · 1-3 years · Lower risk</div>
+                    </div>
+                    <div class="inv-type-check hidden" id="invCheckLongterm"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+                  </div>
+                </div>
+
+                <div class="inv-risk-section hidden" id="invRiskSection">
+                  <div class="inv-type-label">Select risk level</div>
+                  <div class="inv-risk-selector">
+                    <div class="inv-risk-card inv-risk-safe" id="invRiskSafe" onclick="invSelectRisk('safe')">
+                      <div class="inv-risk-icon"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>️</div>
+                      <div class="inv-risk-info">
+                        <div class="inv-risk-name">Safe</div>
+                        <div class="inv-risk-desc">Covered calls · ITM/ATM · Blue chips · Capital preservation</div>
+                      </div>
+                      <div class="inv-risk-check hidden" id="invCheckSafe"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+                    </div>
+                    <div class="inv-risk-card inv-risk-medium" id="invRiskMedium" onclick="invSelectRisk('medium')">
+                      <div class="inv-risk-icon"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span>️</div>
+                      <div class="inv-risk-info">
+                        <div class="inv-risk-name">Medium Risk</div>
+                        <div class="inv-risk-desc">Long calls/puts · Spreads · OTM · Balanced growth</div>
+                      </div>
+                      <div class="inv-risk-check hidden" id="invCheckMedium"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+                    </div>
+                    <div class="inv-risk-card inv-risk-high" id="invRiskHigh" onclick="invSelectRisk('high')">
+                      <div class="inv-risk-icon"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span></div>
+                      <div class="inv-risk-info">
+                        <div class="inv-risk-name">High Risk</div>
+                        <div class="inv-risk-desc">OTM calls · Short expiry · Momentum plays · Max upside</div>
+                      </div>
+                      <div class="inv-risk-check hidden" id="invCheckHigh"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <button class="btn-generate" id="invGenerateBtn" disabled><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Build My Investment Plan</button>
+                <div class="inv-disclaimer">AI-generated plan based on your portfolio. Not financial advice. Always do your own research.</div>
+
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Your Context</h2></div>
+              <div class="inv-context-body" id="invContextBody">
+                <div class="loading-row">Loading portfolio...</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT: Plan Output -->
+          <div class="inv-right">
+            <div class="card" style="height:100%">
+              <div class="card-header">
+                <h2 id="invPlanTitle"><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Your Investment Plan</h2>
+                <span class="hint" id="invPlanHint">Fill in the form and click Generate</span>
+              </div>
+              <div id="invPlanOutput">
+                <div class="inv-empty">
+                  <div class="inv-empty-icon"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span></div>
+                  <div class="inv-empty-text">Enter an amount, choose your investment type, and click <b>Build My Investment Plan</b> to get a personalized plan based on your portfolio.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB 3: NEWS & INTELLIGENCE                                  -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-news">
+    <div class="news-layout">
+
+      <!-- LEFT: Ticker Selector + Market Pulse -->
+      <div class="news-left">
+
+        <!-- Ticker Picker -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Select Ticker</h2>
+          </div>
+          <div class="news-ticker-body">
+            <div class="news-ticker-search">
+              <input type="text" id="newsTickerInput" class="text-input" placeholder="Type ticker e.g. AAPL, BTC..." maxlength="10"/>
+              <button class="btn-primary" id="newsLoadBtn">Load News</button>
+            </div>
+            <div class="news-quick-label">Quick Select</div>
+            <div class="news-quick-tickers" id="newsQuickTickers"></div>
+          </div>
+        </div>
+
+        <!-- Market Pulse -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Market Pulse</h2>
+            <button class="btn-icon" id="newsMarketRefresh" title="Refresh">↻</button>
+          </div>
+          <div id="newsMarketFeed">
+            <div class="loading-row">Loading market news...</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: News Feed + Intelligence -->
+      <div class="news-right">
+
+        <!-- News Feed -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8z"/></svg></span> News Feed</h2>
+            <div class="card-actions">
+              <span class="news-ticker-badge hidden" id="newsActiveTicker"></span>
+              <button class="btn-secondary btn-sm hidden" id="newsAnalyzeSentiment"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> Analyze Sentiment</button>
+              <button class="btn-icon hidden" id="newsRefreshFeed" title="Refresh">↻</button>
+            </div>
+          </div>
+          <div id="newsFeed">
+            <div class="empty-state">Select a ticker on the left to load news from Finnhub + Yahoo Finance.</div>
+          </div>
+        </div>
+
+        <!-- Company Intelligence -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.73A3 3 0 0 1 4.46 9.5a2.5 2.5 0 0 1 5.04-5z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.73A3 3 0 0 0 19.54 9.5a2.5 2.5 0 0 0-5.04-5z"/></svg></span> Company Intelligence</h2>
+            <button class="btn-generate" id="newsIntelBtn" style="width:auto;padding:6px 14px;margin:0;font-size:12px" disabled><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Run Intelligence</button>
+          </div>
+          <div id="newsIntelOutput">
+            <div class="empty-state">Load a ticker's news first, then run Intelligence for a deep AI analysis of company strategy, earnings, and analyst sentiment.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: TOOLS (Chart, Earnings, Insider, Alerts, Options)      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: TRADE JOURNAL                                          -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: ALERT LOG                                              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: KALSHI BET PREDICTOR (Phase 2)                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-kalshi">
+    <div class="kalshi-layout">
+
+      <!-- Connect Card -->
+      <div class="card" id="kalshiConnectCard">
+        <div class="card-header">
+          <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8H6a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2z"/></svg></span> Kalshi Account</h2>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="tt-status-dot" id="kalshiStatusDot"></span>
+            <span style="font-size:11px;color:var(--text3)" id="kalshiStatusLabel">Not Connected</span>
+          </div>
+        </div>
+        <!-- Connected state -->
+        <div class="hidden" id="kalshiConnectedPanel">
+          <div style="display:flex;gap:12px;align-items:center;padding:8px 0">
+            <div style="flex:1">
+              <div style="font-size:11px;color:var(--text3)">Balance</div>
+              <div style="font-size:20px;font-weight:800;color:var(--green)" id="kalshiBalance">—</div>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:11px;color:var(--text3)">Open Positions</div>
+              <div style="font-size:20px;font-weight:800" id="kalshiPositionCount">—</div>
+            </div>
+            <button class="btn-secondary btn-sm" id="kalshiDisconnectBtn">Disconnect</button>
+          </div>
+        </div>
+        <!-- Disconnected state -->
+        <div id="kalshiSetupPanel">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+            Kalshi uses RSA key authentication. Generate your API key at
+            <b>kalshi.com → Settings → API</b> then paste below.
+          </div>
+          <div class="form-group">
+            <label>API Key ID</label>
+            <input type="text" id="kalshiApiKeyId" class="text-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off"/>
+          </div>
+          <div class="form-group" style="margin-top:8px">
+            <label>Private Key (PEM)</label>
+            <textarea id="kalshiPrivateKey" class="text-input" rows="4" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----" style="font-family:monospace;font-size:10px;resize:vertical"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn-primary" id="kalshiConnectBtn" style="flex:1">Connect to Kalshi</button>
+          </div>
+          <div id="kalshiConnectMsg" class="hidden" style="margin-top:8px;font-size:11px"></div>
+        </div>
+      </div>
+
+      <!-- Positions + Orders (shown when connected) -->
+      <div class="hidden" id="kalshiTradingPanel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <!-- Open Positions -->
+          <div class="card">
+            <div class="card-header">
+              <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span> Open Positions</h2>
+              <button class="btn-icon" id="kalshiRefreshPositions" title="Refresh">↻</button>
+            </div>
+            <div id="kalshiPositionsList"><div class="empty-state">No open positions.</div></div>
+          </div>
+          <!-- Open Orders -->
+          <div class="card">
+            <div class="card-header">
+              <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Open Orders</h2>
+            </div>
+            <div id="kalshiOrdersList"><div class="empty-state">No open orders.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Place Bet Modal trigger (shown in detail panel) -->
+
+      <!-- Header -->
+      <div class="card kalshi-header-card">
+        <div class="card-header">
+          <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span> Kalshi Bet Predictor</h2>
+          <button class="btn-primary btn-sm" id="kalshiScanBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Scan Markets
+          </button>
+        </div>
+        <div style="font-size:11px;color:var(--text3)">
+          Compares external data (FRED, BLS, NOAA, CoinGecko) against Kalshi market prices. Fires recommendation only when divergence ≥15pts, within 72hrs, and market is liquid.
+          <span style="color:var(--red);font-weight:600"> Hard blocked: Sports, Politics, Culture.</span>
+        </div>
+      </div>
+
+      <!-- Category Cards -->
+      <div class="kalshi-categories" id="kalshiCategories">
+        <div class="empty-state">Click Scan Markets to analyze all approved categories.</div>
+      </div>
+
+      <!-- Detail Panel -->
+      <div class="card hidden" id="kalshiDetailCard">
+        <div class="card-header">
+          <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> <span id="kalshiDetailTitle">Category Detail</span></h2>
+          <button class="btn-secondary btn-sm" id="kalshiAiBtn">Get AI Recommendation</button>
+          <button class="btn-primary btn-sm hidden" id="kalshiBetBtn">Place Bet</button>
+        </div>
+        <div id="kalshiDetailBody"></div>
+        <div id="kalshiAiOutput" class="hidden" style="margin-top:12px"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB: SIGNAL ENGINE (Phase 1)                                -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-signals">
+    <div class="signals-layout">
+
+      <!-- LEFT: Scan Controls + Results -->
+      <div class="signals-left">
+
+        <!-- Scan Header -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span> Signal Engine</h2>
+            <button class="btn-primary btn-sm" id="signalScanBtn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Run Scan
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);padding:0 0 8px 0">
+            Scans S&P 500 + NASDAQ 100 universe. Anchor signal: unusual options volume. Convergence rule: anchor + 2 other signals.
+          </div>
+          <div id="signalScanStatus" class="empty-state">Click Run Scan to start the daily funnel.</div>
+        </div>
+
+        <!-- Funnel Stats -->
+        <div class="card hidden" id="signalFunnelCard">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></span> Stage 1 — Funnel Results</h2>
+          </div>
+          <div class="signals-funnel-stats" id="signalFunnelStats"></div>
+        </div>
+
+        <!-- Scan Results -->
+        <div class="card hidden" id="signalResultsCard">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Stage 2 — Scored Candidates</h2>
+            <span class="hint" id="signalResultsCount"></span>
+          </div>
+          <div id="signalResultsList"></div>
+        </div>
+
+        <!-- Manual ticker score -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Score Any Ticker</h2>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input type="text" id="signalManualTicker" class="text-input" placeholder="e.g. NVDA" maxlength="10" style="flex:1;text-transform:uppercase"/>
+            <button class="btn-primary btn-sm" id="signalManualBtn">Score</button>
+          </div>
+          <div id="signalManualResult"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Signal Detail + AI Brief -->
+      <div class="signals-right">
+
+        <!-- Signal Breakdown -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Signal Breakdown</h2>
+            <span class="hint" id="signalDetailTicker">Select a ticker</span>
+          </div>
+          <div id="signalBreakdown">
+            <div class="empty-state">Run a scan or score a ticker to see signal breakdown.</div>
+          </div>
+        </div>
+
+        <!-- AI Brief -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg></span> AI Brief</h2>
+            <button class="btn-secondary btn-sm hidden" id="signalAiBriefBtn">Generate Brief</button>
+          </div>
+          <div id="signalAiBrief">
+            <div class="empty-state">Select a scored ticker to generate an AI trading brief.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: BROKERAGE (Tastytrade)                                 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-brokerage">
+    <div class="tt-layout">
+
+      <!-- LEFT: Connection Panel -->
+      <div class="tt-left">
+
+        <!-- Connect Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="tt-logo-row">
+              <div class="tt-logo">TT</div>
+              <div>
+                <div class="tt-brand">tastytrade</div>
+                <div class="tt-brand-sub">Options Brokerage</div>
+              </div>
+              <div class="tt-status-dot-wrap">
+                <span class="tt-status-dot" id="ttStatusDot"></span>
+                <span class="tt-status-label" id="ttStatusLabel">Not Connected</span>
+              </div>
+            </div>
+          </div>
+          <div class="tt-connect-body">
+
+            <!-- Mode toggle -->
+            <div class="tt-live-badge"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> Live Account — Real Money</div>
+
+            <!-- Credentials -->
+            <div class="form-group" style="margin-top:12px">
+              <label>Username (email)</label>
+              <input type="email" id="ttUsername" class="text-input" placeholder="your@email.com" autocomplete="off"/>
+            </div>
+            <div class="form-group" style="margin-top:8px">
+              <label>Password</label>
+              <div class="ais-input-wrap">
+                <input type="password" id="ttPassword" class="text-input" placeholder="••••••••" autocomplete="off"/>
+                <button class="ais-eye-btn" data-target="ttPassword"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span></button>
+              </div>
+            </div>
+
+            <!-- Account selector (shown after connect) -->
+            <div class="tt-account-select hidden" id="ttAccountSelect">
+              <label class="form-group" style="margin-top:8px">
+                <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px">Account</span>
+              </label>
+              <select id="ttAccountNumber" class="select-input" style="margin-top:4px"></select>
+            </div>
+
+            <!-- Security question (shown when Tastytrade requires it) -->
+            <div class="tt-device-auth hidden" id="ttSecurityAuth">
+              <div class="tt-device-auth-msg" id="ttSecurityQuestion">
+                <span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Tastytrade requires your security question answer.
+              </div>
+              <div class="form-group" style="margin-top:8px">
+                <label>Your Answer</label>
+                <input type="text" id="ttSecurityAnswer" class="text-input" placeholder="Enter your answer" autocomplete="off"/>
+              </div>
+              <button class="btn-primary" id="ttSecurityAnswerBtn" style="width:100%;margin-top:8px"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Submit Answer</button>
+            </div>
+
+            <!-- Device verification (shown when Tastytrade sends a code) -->
+            <div class="tt-device-auth hidden" id="ttDeviceAuth">
+              <div class="tt-device-auth-msg" id="ttDeviceAuthMsg">
+                <span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span> Check your email for a verification code from Tastytrade
+              </div>
+              <div class="form-group" style="margin-top:8px">
+                <label>Verification Code</label>
+                <input type="text" id="ttDeviceCode" class="text-input" placeholder="Enter 6-digit code" maxlength="10" autocomplete="one-time-code"/>
+              </div>
+              <button class="btn-primary" id="ttVerifyBtn" style="width:100%;margin-top:8px"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> Verify & Connect</button>
+            </div>
+
+            <div class="tt-connect-actions">
+              <button class="btn-primary" id="ttConnectBtn" style="flex:1"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8H6a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2z"/></svg></span> Connect</button>
+              <button class="btn-secondary hidden" id="ttDisconnectBtn">Disconnect</button>
+            </div>
+            <div class="tt-connect-msg hidden" id="ttConnectMsg"></div>
+          </div>
+        </div>
+
+        <!-- Account Summary -->
+        <div class="card hidden" id="ttAccountCard">
+          <div class="card-header"><h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span> Account Summary</h2></div>
+          <div class="tt-account-summary" id="ttAccountSummary">
+            <div class="loading-row">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Setup Guide -->
+        <div class="card" id="ttSetupGuide">
+          <div class="card-header"><h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Setup Guide</h2></div>
+          <div class="tt-guide">
+            <div class="tt-guide-step">
+              <span class="step-num">1</span>
+              <div>
+                <div class="tt-guide-title">Create Sandbox Account</div>
+                <div class="tt-guide-desc">Go to <span class="tt-link" onclick="require('electron').shell.openExternal('https://developer.tastytrade.com')">developer.tastytrade.com</span> → Create certification account</div>
+              </div>
+            </div>
+            <div class="tt-guide-step">
+              <span class="step-num">2</span>
+              <div>
+                <div class="tt-guide-title">Enable API Access</div>
+                <div class="tt-guide-desc">Log into <b>tastytrade.com</b> → Settings → API Access → Enable. This is required before connecting.</div>
+              </div>
+            </div>
+            <div class="tt-guide-step">
+              <span class="step-num">3</span>
+              <div>
+                <div class="tt-guide-title">Accept API Terms</div>
+                <div class="tt-guide-desc">Go to <b>developer.tastytrade.com</b> → log in → accept the API Terms of Service if prompted.</div>
+              </div>
+            </div>
+            <div class="tt-guide-step">
+              <span class="step-num">4</span>
+              <div>
+                <div class="tt-guide-title">Enter Credentials &amp; Connect</div>
+                <div class="tt-guide-desc">Enter your Tastytrade email + password above → click Connect. Check your email for a verification code if prompted.</div>
+              </div>
+            </div>
+            <div class="tt-guide-step">
+              <span class="step-num">5</span>
+              <div>
+                <div class="tt-guide-title">Place Orders from AI Signals</div>
+                <div class="tt-guide-desc">AI signals show a <b><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Tastytrade</b> button. One click sends the order to your live account.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Positions + Orders + Options Chain -->
+      <div class="tt-right">
+
+        <!-- Live Positions -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Live Positions</h2>
+            <button class="btn-secondary btn-sm" id="ttRefreshPositions">↻ Refresh</button>
+          </div>
+          <div id="ttPositions">
+            <div class="tt-not-connected">Connect to Tastytrade to see your live positions.</div>
+          </div>
+        </div>
+
+        <!-- Live Orders -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Live Orders</h2>
+            <button class="btn-secondary btn-sm" id="ttRefreshOrders">↻ Refresh</button>
+          </div>
+          <div id="ttOrders">
+            <div class="tt-not-connected">Connect to see open orders.</div>
+          </div>
+        </div>
+
+        <!-- Options Chain (Real) -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Real Options Chain</h2>
+            <span class="hint" style="color:var(--green)"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Live data from Tastytrade</span>
+          </div>
+          <div style="padding:12px;display:flex;gap:8px">
+            <input type="text" id="ttChainTicker" class="text-input" placeholder="e.g. NVDA" maxlength="10" style="width:100px"/>
+            <button class="btn-primary btn-sm" id="ttLoadChain">Load Chain</button>
+          </div>
+          <div id="ttOptionsChain">
+            <div class="tt-not-connected">Connect and enter a ticker to see the real options chain.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Place Order Modal -->
+  <div class="modal hidden" id="modalTTOrder">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Place Order on Tastytrade</h3>
+        <button class="modal-close" data-modal="modalTTOrder"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="tt-order-summary" id="ttOrderSummary"></div>
+        <div class="tt-dry-run-result hidden" id="ttDryRunResult"></div>
+        <div class="form-grid" style="margin-top:14px">
+          <div class="form-group">
+            <label>Order Type</label>
+            <select id="ttOrderType" class="select-input">
+              <option value="Limit">Limit (Recommended)</option>
+              <option value="Market">Market</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Limit Price (per share)</label>
+            <input type="number" id="ttOrderPrice" class="text-input" step="0.01" placeholder="e.g. 3.50"/>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px">Set at or near the ask price</div>
+          </div>
+          <div class="form-group">
+            <label>Quantity (contracts)</label>
+            <input type="number" id="ttOrderQty" class="text-input" value="1" min="1"/>
+          </div>
+          <div class="form-group">
+            <label>Time in Force</label>
+            <select id="ttOrderTIF" class="select-input">
+              <option value="Day">Day</option>
+              <option value="GTC">GTC (Good Till Cancel)</option>
+            </select>
+          </div>
+        </div>
+        <div class="contract-calc-box" id="ttOrderCalc" style="display:none">
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Estimated Cost</span>
+            <span class="contract-calc-value" id="ttOrderCost">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Max Loss</span>
+            <span class="contract-calc-value red" id="ttOrderMaxLoss">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Account</span>
+            <span class="contract-calc-value" id="ttOrderAccount">—</span>
+          </div>
+        </div>
+        <div class="tt-mode-warning" id="ttModeWarning"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalTTOrder">Cancel</button>
+        <button class="btn-secondary" id="ttDryRunBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2v13.5L19 21H5l4.5-5.5V2"/><line x1="8.5" y1="2" x2="15.5" y2="2"/></svg></span> Dry Run</button>
+        <button class="btn-primary" id="ttPlaceOrderBtn"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Place Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STATUS BAR — replaces Data tab                              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="modal hidden" id="modalDtAddStock">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Add Stock to Watchlist</h3>
+        <button class="modal-close" data-modal="modalDtAddStock"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <label>Stock Ticker or Company Name</label>
+        <div class="ticker-search-wrap">
+          <input type="text" id="dtAddStockTicker" placeholder="e.g. NVDA or Apple Inc" class="text-input" autocomplete="off"/>
+          <div class="ticker-dropdown hidden" id="dtAddStockDropdown"></div>
+        </div>
+        <div class="ticker-validate-msg" id="dtAddStockMsg"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalDtAddStock">Cancel</button>
+        <button class="btn-primary" id="dtAddStockConfirm">Add to Watchlist</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Trade / Add Contract -->
+  <div class="modal hidden" id="modalAddContract">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3>Log New Trade</h3>
+        <button class="modal-close" data-modal="modalAddContract"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Stock Ticker *</label>
+            <input type="text" id="ctTicker" placeholder="NVDA" class="text-input" maxlength="10" />
+          </div>
+          <div class="form-group">
+            <label>Type *</label>
+            <select id="ctType" class="select-input">
+              <option value="CALL">CALL</option>
+              <option value="PUT">PUT</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Strike Price *</label>
+            <input type="number" id="ctStrike" placeholder="490" class="text-input" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Expiry Date *</label>
+            <input type="date" id="ctExpiry" class="text-input" />
+          </div>
+          <div class="form-group">
+          <label>Premium Paid (per share) *</label>
+          <input type="number" id="ctPricePaid" placeholder="e.g. 3.20" class="text-input" step="0.01" />
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">The price shown on Robinhood (e.g. $3.20). Total cost = $3.20 × 100 × contracts</div>
+          </div>
+          <div class="form-group">
+            <label>Number of Contracts *</label>
+            <input type="number" id="ctContracts" placeholder="1" class="text-input" min="1" value="1" />
+            <div style="font-size:10px;color:var(--text3);margin-top:3px">1 contract = 100 shares</div>
+          </div>
+          <div class="form-group">
+            <label>Date Bought</label>
+            <input type="date" id="ctDateBought" class="text-input" />
+          </div>
+          <div class="form-group">
+            <label>Time Bought</label>
+            <input type="time" id="ctTimeBought" class="text-input" />
+          </div>
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <input type="text" id="ctNotes" placeholder="e.g. Based on AI signal" class="text-input" />
+          </div>
+        </div>
+        <!-- Live cost calculator -->
+        <div class="contract-calc-box" id="ctCalcBox" style="display:none">
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Total Cost Paid</span>
+            <span class="contract-calc-value" id="ctTotalCost">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Formula</span>
+            <span class="contract-calc-formula" id="ctFormula">—</span>
+          </div>
+          <div class="contract-calc-row">
+            <span class="contract-calc-label">Max Loss</span>
+            <span class="contract-calc-value red" id="ctMaxLoss">—</span>
+          </div>
+        </div>
+        <div class="form-calc" id="ctCalc"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalAddContract">Cancel</button>
+        <button class="btn-primary" id="ctSaveContract">Save Trade</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Close Contract -->
+  <div class="modal hidden" id="modalCloseContract">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Close Trade</h3>
+        <button class="modal-close" data-modal="modalCloseContract"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div id="closeContractInfo" class="close-contract-info"></div>
+        <div class="form-group">
+          <label>Premium Sold At (per share) *</label>
+          <input type="number" id="closeSoldPrice" placeholder="4.80" class="text-input" step="0.01" />
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">The option price shown on Robinhood when you sold (e.g. $4.80 → total proceeds = $4.80 × 100 × contracts)</div>
+        </div>
+        <div class="form-group">
+          <label>Date Sold</label>
+          <input type="date" id="closeSoldDate" class="text-input" />
+        </div>
+        <div class="form-group">
+          <label>Time Sold</label>
+          <input type="time" id="closeSoldTime" class="text-input" />
+        </div>
+        <div class="close-pnl-preview" id="closePnlPreview"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalCloseContract">Cancel</button>
+        <button class="btn-primary" id="closeContractConfirm">Close Trade</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Stock to LT Portfolio -->
+  <div class="modal hidden" id="modalLtAddStock">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3>Add Stock to Portfolio</h3>
+        <button class="modal-close" data-modal="modalLtAddStock"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Stock Ticker or Company Name *</label>
+            <div class="ticker-search-wrap">
+              <input type="text" id="ltTicker" placeholder="e.g. NVDA or Nvidia" class="text-input" autocomplete="off"/>
+              <div class="ticker-dropdown hidden" id="ltTickerDropdown"></div>
+            </div>
+            <div class="ticker-validate-msg" id="ltTickerMsg"></div>
+          </div>
+          <div class="form-group">
+            <label>Shares Owned *</label>
+            <input type="number" id="ltShares" placeholder="10" class="text-input" min="0.001" step="0.001" />
+          </div>
+          <div class="form-group">
+            <label>Average Cost Per Share *</label>
+            <input type="number" id="ltAvgCost" placeholder="420.00" class="text-input" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Date Bought</label>
+            <input type="date" id="ltDateBought" class="text-input" />
+          </div>
+          <div class="form-group">
+            <label>Broker</label>
+            <input type="text" id="ltBroker" placeholder="Robinhood" class="text-input" />
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <input type="text" id="ltNotes" placeholder="Long term hold" class="text-input" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalLtAddStock">Cancel</button>
+        <button class="btn-primary" id="ltAddStockConfirm">Add to Portfolio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add to LT Watchlist -->
+  <div class="modal hidden" id="modalLtAddWatchlist">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Add to Watchlist</h3>
+        <button class="modal-close" data-modal="modalLtAddWatchlist"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <label>Stock Ticker or Company Name</label>
+        <div class="ticker-search-wrap">
+          <input type="text" id="ltWatchlistTicker" placeholder="e.g. META or Meta Platforms" class="text-input" autocomplete="off"/>
+          <div class="ticker-dropdown hidden" id="ltWatchlistDropdown"></div>
+        </div>
+        <div class="ticker-validate-msg" id="ltWatchlistMsg"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalLtAddWatchlist">Cancel</button>
+        <button class="btn-primary" id="ltAddWatchlistConfirm">Add to Watchlist</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Suggestions Modal -->
+  <div class="modal hidden" id="modalAiSuggest">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span> AI Stock Suggestions</h3>
+        <button class="modal-close" data-modal="modalAiSuggest"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body" id="aiSuggestContent">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <span>Claude is scanning the market...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Crypto to DT Watchlist -->
+  <div class="modal hidden" id="modalDtAddCrypto">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M9 8h4.5a2 2 0 0 1 0 4H9v4h4.5a2 2 0 0 0 0-4"/><line x1="9" y1="12" x2="13.5" y2="12"/></svg></span> Add Crypto to Watchlist</h3>
+        <button class="modal-close" data-modal="modalDtAddCrypto"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <label>Coin Symbol</label>
+        <input type="text" id="dtAddCryptoTicker" placeholder="e.g. BTC, ETH, SOL" class="text-input" maxlength="10" style="margin-top:8px" />
+        <div style="margin-top:10px;font-size:11px;color:var(--text2)">Supported: BTC, ETH, SOL, DOGE, XRP, BNB, ADA, AVAX, LINK, DOT, LTC, UNI, ATOM</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalDtAddCrypto">Cancel</button>
+        <button class="btn-primary" id="dtAddCryptoConfirm">Add Coin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Crypto to LT Portfolio -->
+  <div class="modal hidden" id="modalLtAddCryptoPortfolio">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M9 8h4.5a2 2 0 0 1 0 4H9v4h4.5a2 2 0 0 0 0-4"/><line x1="9" y1="12" x2="13.5" y2="12"/></svg></span> Add Crypto I Own</h3>
+        <button class="modal-close" data-modal="modalLtAddCryptoPortfolio"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Coin Symbol *</label>
+            <input type="text" id="ltCryptoTicker" placeholder="BTC" class="text-input" maxlength="10" />
+          </div>
+          <div class="form-group">
+            <label>Quantity *</label>
+            <input type="number" id="ltCryptoCoins" placeholder="e.g. 0.5 BTC or 10 ETH" class="text-input" step="0.000001" />
+          </div>
+          <div class="form-group">
+            <label>Avg Buy Price (USD) *</label>
+            <input type="number" id="ltCryptoAvgCost" placeholder="60000" class="text-input" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Date Bought</label>
+            <input type="date" id="ltCryptoDateBought" class="text-input" />
+          </div>
+          <div class="form-group">
+            <label>Exchange</label>
+            <input type="text" id="ltCryptoExchange" placeholder="Coinbase, Binance..." class="text-input" />
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <input type="text" id="ltCryptoNotes" placeholder="Long term hold" class="text-input" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalLtAddCryptoPortfolio">Cancel</button>
+        <button class="btn-primary" id="ltAddCryptoPortfolioConfirm">Add to Portfolio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Crypto to LT Watchlist -->
+  <div class="modal hidden" id="modalLtAddCryptoWatchlist">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M9 8h4.5a2 2 0 0 1 0 4H9v4h4.5a2 2 0 0 0 0-4"/><line x1="9" y1="12" x2="13.5" y2="12"/></svg></span> Add Crypto to Watch</h3>
+        <button class="modal-close" data-modal="modalLtAddCryptoWatchlist"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <label>Coin Symbol</label>
+        <input type="text" id="ltCryptoWatchlistTicker" placeholder="e.g. BTC, ETH, SOL" class="text-input" maxlength="10" style="margin-top:8px" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalLtAddCryptoWatchlist">Cancel</button>
+        <button class="btn-primary" id="ltAddCryptoWatchlistConfirm">Add Coin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Portfolio Stock -->
+  <div class="modal hidden" id="modalEditStock">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>️ Edit Position — <span id="editStockTickerLabel"></span></h3>
+        <button class="modal-close" data-modal="modalEditStock"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Shares Owned *</label>
+            <input type="number" id="editShares" class="text-input" min="0.001" step="0.001"/>
+          </div>
+          <div class="form-group">
+            <label>Average Cost Per Share *</label>
+            <input type="number" id="editAvgCost" class="text-input" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Date Bought</label>
+            <input type="date" id="editDateBought" class="text-input"/>
+          </div>
+          <div class="form-group">
+            <label>Broker</label>
+            <input type="text" id="editBroker" class="text-input" placeholder="Robinhood"/>
+          </div>
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <input type="text" id="editNotes" class="text-input" placeholder="Long term hold"/>
+          </div>
+        </div>
+        <div class="edit-stock-preview" id="editStockPreview"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalEditStock">Cancel</button>
+        <button class="btn-primary" id="editStockConfirm"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Crypto Holding -->
+  <div class="modal hidden" id="modalEditCrypto">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>️ Edit Crypto — <span id="editCryptoTickerLabel"></span></h3>
+        <button class="modal-close" data-modal="modalEditCrypto"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Quantity *</label>
+            <input type="number" id="editCryptoCoins" class="text-input" step="0.000001" placeholder="e.g. 0.5"/>
+          </div>
+          <div class="form-group">
+            <label>Avg Buy Price (USD) *</label>
+            <input type="number" id="editCryptoAvgCost" class="text-input" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Date Bought</label>
+            <input type="date" id="editCryptoDateBought" class="text-input"/>
+          </div>
+          <div class="form-group">
+            <label>Exchange</label>
+            <input type="text" id="editCryptoExchange" class="text-input" placeholder="Coinbase, Binance..."/>
+          </div>
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <input type="text" id="editCryptoNotes" class="text-input"/>
+          </div>
+        </div>
+        <div class="edit-stock-preview" id="editCryptoPreview"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalEditCrypto">Cancel</button>
+        <button class="btn-primary" id="editCryptoConfirm"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top 3 Picks Panel -->
+  <div class="top-picks-panel hidden" id="topPicksPanel">
+    <div class="top-picks-header">
+      <div class="top-picks-title"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span> Claude's Top 3 Picks Today</div>
+      <button class="top-picks-close" id="topPicksClose"><span class="icon-svg"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+    </div>
+    <div id="topPicksBody">
+      <div class="loading-state" style="padding:20px">
+        <div class="spinner"></div>
+        <span>Claude is scanning the market...</span>
+      </div>
+    </div>
+    <div class="top-picks-footer">
+      <span id="topPicksNote"></span>
+      <button class="btn-secondary btn-sm" id="topPicksRefresh">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: ALERT LOG                                              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  
+
+  <!-- Top Picks Trigger Button -->
+  <button class="top-picks-trigger hidden" id="topPicksTrigger" title="Show Top 3 Picks"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span> Top Picks</button>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STATUS BAR — replaces Data tab                              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-bar-left">
+      <span class="status-item" id="sbLastRefresh"><span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> —</span>
+      <span class="status-sep">·</span>
+      <span class="status-item" id="sbRefreshCount">0 refreshes</span>
+      <span class="status-sep">·</span>
+      <span class="status-item" id="sbAvgFetch">—ms avg</span>
+    </div>
+    <div class="status-bar-center">
+      <span class="status-item" id="sbConfidence">● Prices: —</span>
+      <span class="status-sep">·</span>
+      <span class="status-item" id="sbSources">Dual-source</span>
+    </div>
+    <div class="status-bar-right">
+      <span class="status-countdown" id="sbCountdown">Next refresh in —s</span>
+      <button class="status-refresh-btn" id="sbRefreshBtn" title="Refresh now">↻</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- TAB: RESEARCH (Backtest + EDGAR)                           -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-research">
+    <div class="hub-subtabs">
+      <button class="hub-subtab active" data-hubtab="backtest" data-hub="research">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Backtest
+      </button>
+      <button class="hub-subtab" data-hubtab="edgar" data-hub="research">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+        EDGAR Filings
+      </button>
+    </div>
+
+    <!-- Backtest Panel -->
+    <div class="hub-panel active" id="hubpanel-backtest">
+      <div class="backtest-layout">
+
+      <!-- LEFT: Config -->
+      <div class="backtest-left">
+
+        <!-- Strategy Config -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span> Strategy Backtest</h2>
+          </div>
+          <div class="backtest-form">
+            <div class="form-group">
+              <label>Ticker</label>
+              <div style="position:relative">
+                <input type="text" id="btTicker" class="text-input" placeholder="NVDA, AAPL, BTC..." maxlength="20" autocomplete="off"/>
+                <div class="ticker-dropdown hidden" id="btTickerDropdown"></div>
+              </div>
+              <div class="ticker-validate-msg" id="btTickerMsg"></div>
+            </div>
+            <div class="form-group" style="margin-top:10px">
+              <label>Strategy</label>
+              <select id="btStrategy" class="select-input">
+                <option value="">Loading strategies...</option>
+              </select>
+            </div>
+            <div class="bt-strategy-desc" id="btStrategyDesc"></div>
+            <div class="form-group" style="margin-top:10px">
+              <label>Period</label>
+              <div class="bt-period-group">
+                <button class="bt-period-btn active" data-range="6mo">6M</button>
+                <button class="bt-period-btn" data-range="1y">1Y</button>
+                <button class="bt-period-btn" data-range="2y">2Y</button>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:10px">
+              <label>Starting Capital</label>
+              <input type="number" id="btCapital" class="text-input" value="10000" min="100" step="1000"/>
+            </div>
+            <button class="btn-generate" id="btRunBtn" style="margin-top:14px">
+              <span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
+              Run Backtest
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Summary -->
+        <div class="card" id="btStatsCard" style="display:none">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Results</h2>
+            <span class="hint" id="btResultLabel"></span>
+          </div>
+          <div class="bt-stats-grid" id="btStatsGrid"></div>
+          <div class="bt-alpha-bar" id="btAlphaBar"></div>
+        </div>
+
+        <!-- Statistical Validation -->
+        <div class="card" id="btValidationCard" style="display:none">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20M6 20V10l6-6 6 6v10"/></svg></span> Statistical Validation</h2>
+            <button class="btn-secondary btn-sm" id="btValidateBtn">Run (1000 iterations)</button>
+          </div>
+          <div id="btValidationOutput">
+            <div class="empty-state" style="font-size:11px">Monte Carlo permutation test + Bootstrap Sharpe CI + Walk-Forward consistency analysis.</div>
+          </div>
+        </div>
+
+        <!-- AI Analysis -->
+        <div class="card" id="btAiCard" style="display:none">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg></span> AI Analysis</h2>
+            <button class="btn-icon" id="btAiBtn" title="Get AI analysis">Ask AI</button>
+          </div>
+          <div id="btAiOutput"><div class="empty-state">Click "Ask AI" to get analysis of these backtest results.</div></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Chart + Trades -->
+      <div class="backtest-right">
+
+        <!-- Price Chart with signals -->
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg></span> Price Chart</h2>
+            <span class="hint" id="btChartLabel">Run a backtest to see chart</span>
+          </div>
+          <div class="bt-chart-wrap">
+            <canvas id="btChart" height="220"></canvas>
+            <div class="bt-chart-empty" id="btChartEmpty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              <div style="margin-top:8px">Configure and run a backtest</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trade Log -->
+        <div class="card" id="btTradesCard" style="display:none">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Trade Log</h2>
+            <span class="hint" id="btTradeCount"></span>
+          </div>
+          <div class="bt-trades-wrap">
+            <table class="bt-trades-table">
+              <thead>
+                <tr>
+                  <th>Buy Date</th>
+                  <th>Sell Date</th>
+                  <th>Buy $</th>
+                  <th>Sell $</th>
+                  <th>P&L</th>
+                  <th>Return</th>
+                  <th>Days</th>
+                </tr>
+              </thead>
+              <tbody id="btTradesBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div> <!-- end hubpanel-backtest -->
+
+    <!-- EDGAR Panel -->
+    <div class="hub-panel hidden" id="hubpanel-edgar">
+      <div class="edgar-layout">
+
+      <!-- LEFT: Config -->
+      <div class="edgar-left">
+        <div class="card">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> SEC EDGAR Analysis</h2>
+          </div>
+          <div class="edgar-form">
+            <div class="form-group">
+              <label>Ticker</label>
+              <div style="position:relative">
+                <input type="text" id="edgarTicker" class="text-input" placeholder="AAPL, NVDA, MSFT..." maxlength="10" autocomplete="off"/>
+                <div class="ticker-dropdown hidden" id="edgarTickerDropdown"></div>
+              </div>
+              <div class="ticker-validate-msg" id="edgarTickerMsg"></div>
+            </div>
+            <div class="form-group">
+              <label>Analysis Type</label>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:11px;text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="edgarInsider" checked> Insider Transactions (Form 4)</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:11px;text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="edgar8k" checked> Material Events (8-K)</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:11px;text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="edgar10k"> Annual Risk Factors (10-K)</label>
+              </div>
+            </div>
+            <button class="btn-generate" id="edgarRunBtn">
+              <span class="icon-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span>
+              Fetch EDGAR Data
+            </button>
+          </div>
+        </div>
+
+        <!-- Composite Score -->
+        <div class="card" id="edgarScoreCard" style="display:none">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span> Filing Score</h2>
+          </div>
+          <div id="edgarScoreBody"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Results -->
+      <div class="edgar-right">
+        <div class="card" id="edgarResultsCard">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Filing Results</h2>
+            <span class="hint" id="edgarResultLabel">Select a ticker and run</span>
+          </div>
+          <div id="edgarResultsBody">
+            <div class="empty-state">Enter a ticker and select analysis types to pull SEC filing data. Free via EDGAR public API — no key needed.</div>
+          </div>
+        </div>
+
+        <!-- AI Summary -->
+        <div class="card" id="edgarAiCard" style="display:none">
+          <div class="card-header">
+            <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg></span> AI Filing Analysis</h2>
+          </div>
+          <div id="edgarAiBody"><div class="empty-state">AI summary of filings will appear here.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+    </div> <!-- end hubpanel-edgar -->
+  </div> <!-- end tab-research -->
+
+  <!-- ── Auto Mode Modal ──────────────────────────────────────── -->
+  <div class="auto-modal-overlay hidden" id="autoModalOverlay">
+    <div class="auto-modal">
+      <div class="auto-modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Auto Trading Mode</span>
+          <span class="auto-mode-badge hidden" id="autoActiveBadge">ACTIVE</span>
+        </div>
+        <button class="auto-modal-close" id="autoModalClose">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="auto-modal-body">
+
+        <!-- Kill Switch -->
+        <div class="auto-killswitch-row" id="autoKillSwitchRow">
+          <div>
+            <div class="auto-killswitch-label">Kill Switch</div>
+            <div class="auto-killswitch-sub">Instantly stops ALL auto trading</div>
+          </div>
+          <button class="auto-killswitch-btn" id="autoKillSwitchBtn">OFF</button>
+        </div>
+
+        <!-- Two columns -->
+        <div class="auto-modal-cols">
+
+          <!-- LEFT: Global settings + Asset list -->
+          <div class="auto-modal-left">
+
+            <!-- Global settings -->
+            <div class="card">
+              <div class="card-header"><h2>Global Settings</h2></div>
+              <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+                <div class="form-group">
+                  <label>Default Mode</label>
+                  <select id="autoGlobalMode" class="select-input">
+                    <option value="paper">Paper Trading (safe)</option>
+                    <option value="tastytrade">Tastytrade (real money)</option>
+                    <option value="kalshi">Kalshi (prediction markets)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Scan Schedule</label>
+                  <select id="autoSchedule" class="select-input">
+                    <option value="15">Every 15 minutes</option>
+                    <option value="30" selected>Every 30 minutes</option>
+                    <option value="60">Every 1 hour</option>
+                    <option value="120">Every 2 hours</option>
+                  </select>
+                </div>
+                <div style="font-size:10px;color:var(--text3);margin-top:4px">
+                  Auto mode runs on paper trading only until you switch the mode above.
+                </div>
+              </div>
+            </div>
+
+            <!-- Risk Limits -->
+            <div class="card">
+              <div class="card-header"><h2>Risk Limits</h2></div>
+              <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+                <div class="form-group">
+                  <label>Max Trades Per Day</label>
+                  <input type="number" id="autoMaxTrades" class="text-input" value="3" min="1" max="20"/>
+                </div>
+                <div class="form-group">
+                  <label>Max Capital Per Trade ($)</label>
+                  <input type="number" id="autoMaxCapital" class="text-input" value="500" min="50" step="50"/>
+                </div>
+                <div class="form-group">
+                  <label>Min AI Confidence (%)</label>
+                  <input type="number" id="autoMinConfidence" class="text-input" value="70" min="50" max="95"/>
+                </div>
+                <div class="form-group">
+                  <label>Max Open Positions</label>
+                  <input type="number" id="autoMaxPositions" class="text-input" value="5" min="1" max="20"/>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text2)">
+                  <input type="checkbox" id="autoMarketHours" checked>
+                  Market hours only (9:30am–4pm ET)
+                </label>
+                <button class="btn-primary btn-sm" id="autoSaveSettings" style="margin-top:4px">Save Settings</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT: Asset selection -->
+          <div class="auto-modal-right">
+            <div class="card">
+              <div class="card-header">
+                <h2>Select Assets</h2>
+                <div style="display:flex;gap:6px">
+                  <button class="btn-secondary btn-sm" id="autoSelectAll">All</button>
+                  <button class="btn-secondary btn-sm" id="autoSelectNone">None</button>
+                </div>
+              </div>
+              <div id="autoAssetList" style="padding:8px;overflow-y:auto;max-height:360px">
+                <div class="loading-row">Loading assets...</div>
+              </div>
+              <!-- Bulk action bar -->
+              <div class="auto-bulk-bar hidden" id="autoBulkBar">
+                <span id="autoBulkCount">0 selected</span>
+                <div style="display:flex;gap:6px">
+                  <button class="btn-primary btn-sm" id="autoBulkEnable">Enable Auto</button>
+                  <button class="btn-secondary btn-sm" id="autoBulkDisable">Disable Auto</button>
+                  <button class="btn-secondary btn-sm" id="autoScanNow">Scan Now</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Auto Trade Log -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-header">
+            <h2>Auto Trade Log</h2>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="hint" id="autoLogCount">0 entries</span>
+              <button class="btn-secondary btn-sm" id="autoRefreshLog">↻</button>
+              <button class="btn-secondary btn-sm" id="autoClearLog">Clear</button>
+            </div>
+          </div>
+          <div class="auto-log-wrap">
+            <table class="auto-log-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Ticker</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                  <th>Details</th>
+                  <th>Mode</th>
+                </tr>
+              </thead>
+              <tbody id="autoLogBody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">No auto trades yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── First Launch AI Setup Overlay ─────────────────────────── -->
+  <div class="ai-setup-overlay hidden" id="aiSetupOverlay">
+    <div class="ai-setup-modal">
+      <div class="ai-setup-header">
+        <svg viewBox="0 0 48 48" width="32" height="32">
+          <defs>
+            <linearGradient id="setupBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0f1a2e"/><stop offset="100%" stop-color="#0a1220"/></linearGradient>
+            <linearGradient id="setupNode" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4d9fff"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+          </defs>
+          <rect width="48" height="48" rx="11" fill="url(#setupBg)"/>
+          <polyline points="9,31 16,26 23,29 30,22 38,16" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="24" cy="10" r="4" fill="url(#setupNode)"/>
+          <circle cx="12" cy="14" r="3" fill="url(#setupNode)"/>
+          <circle cx="36" cy="14" r="3" fill="url(#setupNode)"/>
+          <line x1="12" y1="14" x2="24" y2="10" stroke="#4d9fff" stroke-width="1.2" stroke-opacity="0.7"/>
+          <line x1="24" y1="10" x2="36" y2="14" stroke="#a78bfa" stroke-width="1.2" stroke-opacity="0.7"/>
+        </svg>
+        <div>
+          <div class="ai-setup-title">Welcome to StockForge</div>
+          <div class="ai-setup-subtitle">Set up AI to unlock signal generation, analysis & more</div>
+        </div>
+      </div>
+
+      <div class="ai-setup-body">
+
+        <!-- Ollama (recommended) -->
+        <div class="ai-setup-option" id="setupOllamaCard">
+          <div class="ai-setup-option-header">
+            <div class="ai-setup-option-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div>
+              <div class="ai-setup-option-name">Ollama <span class="ai-setup-badge">Recommended · Free · Private</span></div>
+              <div class="ai-setup-option-desc">Runs AI locally on your Mac. No API key, no cost, no data leaves your machine.</div>
+            </div>
+          </div>
+          <div id="setupOllamaStatus" class="ai-setup-status">Checking...</div>
+          <div id="setupOllamaModels" class="hidden">
+            <label style="font-size:11px;color:var(--text2);font-weight:600">Select model</label>
+            <select id="setupOllamaModelSelect" class="select-input" style="margin-top:5px"></select>
+          </div>
+          <div id="setupOllamaInstall" class="ai-setup-install hidden">
+            <div class="ai-setup-steps">
+              <div class="ai-setup-step"><span class="step-num">1</span><span>Install Ollama: <code>brew install ollama</code> or download from <strong>ollama.com</strong></span></div>
+              <div class="ai-setup-step"><span class="step-num">2</span><span>Pull a model: <code>ollama pull llama3.2</code> (3.8GB) — fast &amp; capable</span></div>
+              <div class="ai-setup-step"><span class="step-num">3</span><span>Start Ollama: <code>ollama serve</code></span></div>
+              <div class="ai-setup-step"><span class="step-num">4</span><span>Click <strong>Retry</strong> below</span></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn-secondary btn-sm" id="setupOllamaRetry">↻ Retry</button>
+              <a href="https://ollama.com" class="btn-secondary btn-sm" style="text-decoration:none">ollama.com →</a>
+            </div>
+          </div>
+          <button class="btn-primary" id="setupOllamaBtn" style="width:100%;margin-top:10px;display:none">Use Ollama</button>
+        </div>
+
+        <div class="ai-setup-divider">or use a cloud provider</div>
+
+        <!-- OpenAI -->
+        <div class="ai-setup-option ai-setup-option-compact">
+          <div class="ai-setup-option-header">
+            <div class="ai-setup-option-icon" style="background:linear-gradient(135deg,#10a37f,#0d8a6b)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+            </div>
+            <div class="ai-setup-option-name">OpenAI (GPT-4o)</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="password" id="setupOpenaiKey" class="text-input" placeholder="sk-..." style="flex:1"/>
+            <button class="btn-primary btn-sm" id="setupOpenaiBtn">Use</button>
+          </div>
+        </div>
+
+        <!-- Anthropic -->
+        <div class="ai-setup-option ai-setup-option-compact">
+          <div class="ai-setup-option-header">
+            <div class="ai-setup-option-icon" style="background:linear-gradient(135deg,#d97706,#b45309)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46"/></svg>
+            </div>
+            <div class="ai-setup-option-name">Anthropic (Claude)</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="password" id="setupAnthropicKey" class="text-input" placeholder="sk-ant-..." style="flex:1"/>
+            <button class="btn-primary btn-sm" id="setupAnthropicBtn">Use</button>
+          </div>
+        </div>
+
+        <!-- Finnhub Key (optional) -->
+        <div class="ai-setup-divider">optional — stock data api key</div>
+        <div class="ai-setup-option ai-setup-option-compact">
+          <div class="ai-setup-option-header">
+            <div class="ai-setup-option-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div>
+              <div class="ai-setup-option-name">Finnhub API Key <span style="font-size:10px;font-weight:400;color:var(--text3)">(optional)</span></div>
+              <div class="ai-setup-option-desc">Free key from <strong>finnhub.io</strong> — improves stock data rate limits. Skip this and a shared key is used automatically.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            <input type="text" id="setupFinnhubKey" class="text-input" placeholder="Leave blank to use shared key..." style="flex:1;font-size:11px"/>
+            <button class="btn-secondary btn-sm" id="setupFinnhubSaveBtn">Save</button>
+            <a href="https://finnhub.io/register" style="font-size:10px;color:var(--blue);text-decoration:none;white-space:nowrap" target="_blank">Get free key →</a>
+          </div>
+          <div id="setupFinnhubStatus" style="font-size:10px;color:var(--text3);margin-top:5px">Using shared key — works fine for personal use</div>
+        </div>
+
+        <!-- Skip -->
+        <div style="text-align:center;margin-top:12px">
+          <button class="ai-setup-skip" id="setupSkipBtn">Skip for now — I'll set this up later in AI Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
