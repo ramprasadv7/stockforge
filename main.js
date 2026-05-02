@@ -115,38 +115,71 @@ function createTray() {
 function startServer() {
   return new Promise((resolve, reject) => {
     const serverPath = path.join(__dirname, 'server.js');
+
+    let serverError = '';
+    let serverReady = false;
+
     serverProcess = fork(serverPath, [], {
       env: { ...process.env, PORT: PORT },
       silent: true
     });
 
-    let serverError = '';
-    serverProcess.stdout.on('data', (data) => console.log('[server]', data.toString()));
+    serverProcess.stdout.on('data', (data) => {
+      const msg = data.toString();
+      console.log('[server]', msg);
+      // Detect server ready from stdout message
+      if (msg.includes('running on port') && !serverReady) {
+        serverReady = true;
+        // Give it 500ms to fully bind before resolving
+        setTimeout(resolve, 500);
+      }
+    });
+
     serverProcess.stderr.on('data', (data) => {
       const msg = data.toString();
       serverError += msg;
       console.error('[server error]', msg);
     });
-    serverProcess.on('error', (e) => reject(new Error(`Server process error: ${e.message}`)));
+
+    serverProcess.on('error', (e) => {
+      reject(new Error(`Server process error: ${e.message}`));
+    });
+
     serverProcess.on('exit', (code) => {
-      if (code !== 0 && code !== null) {
-        reject(new Error(`Server crashed (exit ${code}): ${serverError.slice(0, 200)}`));
+      if (!serverReady) {
+        reject(new Error(
+          `Server exited before starting (code ${code}).\n` +
+          (serverError ? serverError.slice(0, 300) : 'No error details available.')
+        ));
       }
     });
 
-    const checkReady = (attempts = 0) => {
-      http.get(`http://localhost:${PORT}/api/ping`, (res) => {
-        if (res.statusCode === 200) resolve();
-        else if (attempts < 40) setTimeout(() => checkReady(attempts + 1), 500);
-        else reject(new Error('Server did not start'));
-      }).on('error', () => {
-        if (attempts < 40) setTimeout(() => checkReady(attempts + 1), 500);
-        else reject(new Error('Server did not start'));
-      });
-    };
-
-    // Give server more time to initialize before first check
-    setTimeout(() => checkReady(), 1000);
+    // Fallback: ping-based check after 3s
+    setTimeout(() => {
+      if (serverReady) return;
+      const checkReady = (attempts = 0) => {
+        http.get(`http://localhost:${PORT}/api/ping`, (res) => {
+          if (res.statusCode === 200 && !serverReady) {
+            serverReady = true;
+            resolve();
+          } else if (attempts < 30) {
+            setTimeout(() => checkReady(attempts + 1), 500);
+          } else if (!serverReady) {
+            reject(new Error(
+              `Server did not respond after 18s.\n` +
+              (serverError ? `Error: ${serverError.slice(0, 300)}` : 'Check that port 3478 is not in use.')
+            ));
+          }
+        }).on('error', () => {
+          if (attempts < 30) setTimeout(() => checkReady(attempts + 1), 500);
+          else if (!serverReady) reject(new Error(
+            `Cannot connect to server.\n` +
+            (serverError ? `Error: ${serverError.slice(0, 300)}` : 'Port 3478 may be in use by another app.')
+          ));
+        });
+      };
+      checkReady();
+    }, 3000);
   });
 }
 
@@ -259,7 +292,10 @@ app.whenReady().then(async () => {
     createTray();
     startBackgroundScan();
   } catch (err) {
-    dialog.showErrorBox('Startup Error', `Failed to start server: ${err.message}`);
+    dialog.showErrorBox(
+      'StockForge — Startup Error',
+      `${err.message}\n\nTroubleshooting:\n• Make sure no other app is using port 3478\n• Try restarting your Mac\n• Reinstall StockForge from the DMG`
+    );
     app.quit();
   }
 });
