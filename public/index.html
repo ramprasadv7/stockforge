@@ -216,6 +216,43 @@
                 </div>
               </div>
             </div>
+            <!-- Groq -->
+            <div class="ais-panel hidden" id="aisPanel-groq">
+              <div class="card">
+                <div class="card-header">
+                  <h2><span class="icon-svg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Groq (Fast &amp; Free)</h2>
+                </div>
+                <div class="ais-config-body">
+                  <div style="padding:6px 0 10px;font-size:11px;color:var(--text2);line-height:1.5">
+                    Ultra-fast inference — Llama 3.1 70B at ~500 tokens/sec. Free tier available at <strong>console.groq.com</strong>.
+                  </div>
+                  <div class="form-group">
+                    <label>API Key</label>
+                    <div class="ais-input-wrap">
+                      <input type="password" id="aisGroqKey" class="text-input" placeholder="gsk_..." autocomplete="off"/>
+                      <button class="ais-eye-btn" data-target="aisGroqKey">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-top:8px">
+                    <label>Model</label>
+                    <select id="aisGroqModel" class="select-input">
+                      <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile (recommended)</option>
+                      <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (faster)</option>
+                      <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+                      <option value="gemma2-9b-it">gemma2-9b-it</option>
+                      <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+                    </select>
+                  </div>
+                  <div class="ais-provider-actions" style="margin-top:12px">
+                    <button class="btn-secondary btn-sm" id="aisBtnTest-groq">Test Connection</button>
+                    <button class="btn-primary btn-sm" id="aisSave-groq">Save &amp; Set Active</button>
+                  </div>
+                  <div class="ais-test-result hidden" id="aisTestResult-groq"></div>
+                </div>
+              </div>
+            </div>
             <!-- Anthropic -->
             <div class="ais-panel hidden" id="aisPanel-anthropic">
               <div class="card">
@@ -2748,6 +2785,23 @@
         </div>
 
         <div class="ai-setup-divider">or use a cloud provider</div>
+
+        <!-- Groq -->
+        <div class="ai-setup-option ai-setup-option-compact">
+          <div class="ai-setup-option-header">
+            <div class="ai-setup-option-icon" style="background:linear-gradient(135deg,#f97316,#ea580c)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div>
+              <div class="ai-setup-option-name">Groq <span class="ai-setup-badge">Free · Ultra-Fast</span></div>
+              <div class="ai-setup-option-desc">Llama 3.1 70B at ~500 tokens/sec. Free API key at <strong>console.groq.com</strong></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="password" id="setupGroqKey" class="text-input" placeholder="gsk_..." style="flex:1"/>
+            <button class="btn-primary btn-sm" id="setupGroqBtn">Use</button>
+          </div>
+        </div>
 
         <!-- OpenAI -->
         <div class="ai-setup-option ai-setup-option-compact">

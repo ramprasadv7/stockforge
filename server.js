@@ -30,10 +30,11 @@ const AI_SETTINGS_FILE = path.join(BASE_DIR, 'ai-settings.json');
 
 const DEFAULT_AI_SETTINGS = {
   provider: 'ollama',
-  finnhubKey: '', // Optional — free key at finnhub.io, falls back to bundled key
-  opencode: { agent: 'general' }, // Routes through local OpenCode app — works with any model configured there
+  finnhubKey: '',
+  opencode: { agent: 'general' },
   openai: { apiKey: '', model: 'gpt-4o' },
   anthropic: { apiKey: '', model: 'claude-sonnet-4-5' },
+  groq: { apiKey: '', model: 'llama-3.1-70b-versatile' },
   ollama: { url: 'http://localhost:11434', model: 'llama3.2' }
 };
 
@@ -128,19 +129,19 @@ function askViaOpenCode(prompt, settings) {
                 const props = ev.properties || {};
 
                 // Only process events from our session
-                if (props.sessionID && props.sessionID !== sessionId) continue;
+                const evSessionId = props.sessionID || props.info?.sessionID || '';
+                if (evSessionId && evSessionId !== sessionId) continue;
 
                 // Capture assistant message ID
-                if (type === 'message.updated' && props.info?.role === 'assistant') {
+                if (type === 'message.updated' && props.info?.role === 'assistant' && props.info?.sessionID === sessionId) {
                   assistantMsgId = props.info.id;
                 }
 
                 // Capture text parts — filter by assistant messageID in the part
-                if (type === 'message.part.updated') {
+                if (type === 'message.part.updated' && props.sessionID === sessionId) {
                   const part = props.part || {};
-                  const partMsgId = part.messageID || part.sessionID || '';
+                  const partMsgId = part.messageID || '';
                   if (part.type === 'text' && part.text) {
-                    // Accept if we know it's the assistant message, or if it's a different message from user's
                     if (!assistantMsgId || partMsgId === assistantMsgId) {
                       lastAssistantText = part.text;
                     }
@@ -148,23 +149,51 @@ function askViaOpenCode(prompt, settings) {
                 }
 
                 // Accumulate streaming deltas
-                if (type === 'message.part.delta') {
+                if (type === 'message.part.delta' && props.sessionID === sessionId) {
                   const delta = props.delta || {};
                   if (delta.type === 'text') fullText += delta.text || '';
                 }
 
-                // session.idle = done
-                if (type === 'session.idle' && !done) {
+                // session.idle = done — poll messages as fallback to get the actual text
+                if (type === 'session.idle' && props.sessionID === sessionId && !done) {
                   done = true;
                   clearTimeout(timer);
                   evReq.destroy();
-                  const result = fullText.trim() || lastAssistantText.trim();
-                  if (!result) return reject(new Error('OpenCode returned empty response'));
-                  resolve(result);
+
+                  // Prefer accumulated text, fall back to polling GET /session/{id}/message
+                  const immediateResult = fullText.trim() || lastAssistantText.trim();
+                  if (immediateResult) return resolve(immediateResult);
+
+                  // Fallback: fetch messages from session
+                  const msgReq = http.request({
+                    hostname: '127.0.0.1', port: _ocPort,
+                    path: `/session/${sessionId}/message`, method: 'GET',
+                    headers
+                  }, msgRes => {
+                    let out = '';
+                    msgRes.on('data', d => out += d);
+                    msgRes.on('end', () => {
+                      try {
+                        const msgs = JSON.parse(out);
+                        // Find last assistant text part
+                        for (const msg of [...msgs].reverse()) {
+                          if (msg.info?.role !== 'assistant') continue;
+                          for (const part of (msg.parts || [])) {
+                            if (part.type === 'text' && part.text?.trim()) {
+                              return resolve(part.text.trim());
+                            }
+                          }
+                        }
+                        reject(new Error('OpenCode returned empty response'));
+                      } catch { reject(new Error('OpenCode: failed to fetch messages')); }
+                    });
+                  });
+                  msgReq.on('error', () => reject(new Error('OpenCode returned empty response')));
+                  msgReq.end();
                 }
 
                 // Error
-                if (type === 'session.error' && !done) {
+                if (type === 'session.error' && props.sessionID === sessionId && !done) {
                   done = true;
                   clearTimeout(timer);
                   evReq.destroy();
@@ -267,22 +296,89 @@ function askViaAnthropic(prompt, settings) {
   });
 }
 
-// ─── Ollama Provider ──────────────────────────────────────────────
-function askViaOllama(prompt, settings) {
+// ─── Groq Provider (free, fast) ───────────────────────────────────
+function askViaGroq(prompt, settings) {
   return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      model: settings.model || 'llama-3.1-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 4096,
+      temperature: 0.1,
+      response_format: { type: 'json_object' }
+    });
+    const extraCACert = process.env.NODE_EXTRA_CA_CERTS;
+    const certArgs = extraCACert ? ['--cacert', extraCACert] : [];
+    const args = [
+      '-s', '--max-time', '60',
+      ...certArgs,
+      '-X', 'POST',
+      '-H', 'Content-Type: application/json',
+      '-H', `Authorization: Bearer ${settings.apiKey}`,
+      '-d', body,
+      'https://api.groq.com/openai/v1/chat/completions'
+    ];
+    execFile('curl', args, { maxBuffer: 5 * 1024 * 1024 }, (err, stdout) => {
+      if (err) return reject(new Error(`Groq request failed: ${err.message}`));
+      try {
+        const json = JSON.parse(stdout);
+        if (json.error) return reject(new Error(json.error.message || 'Groq error'));
+        resolve(json.choices?.[0]?.message?.content || '');
+      } catch { reject(new Error('Groq parse error: ' + stdout.slice(0, 100))); }
+    });
+  });
+}
+
+// ─── Ollama Provider ──────────────────────────────────────────────
+async function checkOllamaRunning(settings) {
+  const rawUrl = settings?.url || 'http://localhost:11434';
+  return new Promise((resolve) => {
+    const url = new URL('/api/tags', rawUrl);
+    const transport = url.protocol === 'https:' ? require('https') : http;
+    const req = transport.get({ hostname: url.hostname, port: url.port || 11434, path: url.pathname, timeout: 3000 }, res => {
+      let out = '';
+      res.on('data', d => out += d);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(out);
+          const models = (json.models || []).map(m => m.name);
+          resolve({ running: true, models });
+        } catch { resolve({ running: false, models: [] }); }
+      });
+    });
+    req.on('error', () => resolve({ running: false, models: [] }));
+    req.on('timeout', () => { req.destroy(); resolve({ running: false, models: [] }); });
+  });
+}
+
+function askViaOllama(prompt, settings) {
+  return new Promise(async (resolve, reject) => {
     const rawUrl = settings.url || 'http://localhost:11434';
+
+    // Fast pre-check — fail immediately with clear message if Ollama isn't running
+    const status = await checkOllamaRunning(settings);
+    if (!status.running) {
+      return reject(new Error('Ollama is not running. Start it with: ollama serve'));
+    }
+    const model = settings.model || 'llama3.2';
+    if (status.models.length > 0 && !status.models.includes(model)) {
+      // Model not found — use first available or suggest pull
+      const firstModel = status.models[0];
+      console.warn(`[ollama] Model "${model}" not found. Available: ${status.models.join(', ')}. Using ${firstModel}`);
+      settings = { ...settings, model: firstModel };
+    }
+    if (status.models.length === 0) {
+      return reject(new Error(`Ollama is running but no models installed. Run: ollama pull llama3.2`));
+    }
+
     // Use /api/chat for better JSON compliance + system prompt support
     const url = new URL('/api/chat', rawUrl);
     const body = JSON.stringify({
       model: settings.model || 'llama3.2',
       stream: false,
-      format: 'json', // Forces valid JSON output — critical for StockForge prompts
-      options: { temperature: 0.1 }, // Low temp = more deterministic JSON
+      format: 'json',
+      options: { temperature: 0.1 },
       messages: [
-        {
-          role: 'system',
-          content: 'You are a financial AI assistant. Always respond with valid JSON only. Never add explanatory text before or after the JSON.'
-        },
+        { role: 'system', content: 'You are a financial AI assistant. Always respond with valid JSON only. Never add explanatory text before or after the JSON.' },
         { role: 'user', content: prompt }
       ]
     });
@@ -291,12 +387,8 @@ function askViaOllama(prompt, settings) {
     const opts = {
       hostname: url.hostname,
       port: url.port || (isHttps ? 443 : 80),
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      }
+      path: url.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
     };
     const req = transport.request(opts, res => {
       let out = '';
@@ -304,15 +396,15 @@ function askViaOllama(prompt, settings) {
       res.on('end', () => {
         try {
           const json = JSON.parse(out);
-          if (json.error) return reject(new Error(json.error));
-          // /api/chat returns message.content, /api/generate returns response
+          if (json.error) return reject(new Error(`Ollama: ${json.error}`));
           const text = json.message?.content || json.response || '';
+          if (!text) return reject(new Error('Ollama returned empty response'));
           resolve(text);
-        } catch { reject(new Error('Ollama parse error')); }
+        } catch { reject(new Error('Ollama parse error: ' + out.slice(0, 100))); }
       });
     });
-    const t = setTimeout(() => { req.destroy(); reject(new Error('Ollama timeout')); }, 120000);
-    req.on('error', e => { clearTimeout(t); reject(e); });
+    const t = setTimeout(() => { req.destroy(); reject(new Error('Ollama timeout — model may be loading, try again')); }, 120000);
+    req.on('error', e => { clearTimeout(t); reject(new Error(`Ollama connection failed: ${e.message}. Is Ollama running?`)); });
     req.on('close', () => clearTimeout(t));
     req.write(body);
     req.end();
@@ -338,6 +430,10 @@ async function askAI(prompt) {
       break;
     case 'opencode':
       aiCall = askViaOpenCode(prompt, settings.opencode);
+      break;
+    case 'groq':
+      if (!settings.groq?.apiKey) throw new Error('Groq API key not configured. Go to ⚙️ AI Settings.');
+      aiCall = askViaGroq(prompt, settings.groq);
       break;
     case 'ollama':
     default:
@@ -657,6 +753,10 @@ app.post('/api/ai/settings/test', async (req, res) => {
       case 'opencode':
         result = await askViaOpenCode(testPrompt, settings.opencode);
         break;
+      case 'groq':
+        if (!settings.groq?.apiKey) return res.json({ ok: false, error: 'No API key set' });
+        result = await askViaGroq(testPrompt, settings.groq);
+        break;
       case 'ollama':
       default:
         result = await askViaOllama(testPrompt, settings.ollama);
@@ -713,10 +813,11 @@ app.get('/api/ai/status', async (req, res) => {
   const ocRunning = findLocalOpenCode();
   res.json({
     provider: settings.provider,
-    opencode: { configured: true, running: ocRunning, port: _ocPort, agent: settings.opencode?.agent || 'general' },
-    openai:   { configured: !!(settings.openai?.apiKey), model: settings.openai?.model },
+    opencode:  { configured: true, running: ocRunning, port: _ocPort, agent: settings.opencode?.agent || 'general' },
+    openai:    { configured: !!(settings.openai?.apiKey), model: settings.openai?.model },
     anthropic: { configured: !!(settings.anthropic?.apiKey), model: settings.anthropic?.model },
-    ollama:   { configured: true, running: ollamaRunning, url: settings.ollama?.url, model: settings.ollama?.model, availableModels: ollamaModels }
+    groq:      { configured: !!(settings.groq?.apiKey), model: settings.groq?.model },
+    ollama:    { configured: true, running: ollamaRunning, url: settings.ollama?.url, model: settings.ollama?.model, availableModels: ollamaModels }
   });
 });
 

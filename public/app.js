@@ -2311,6 +2311,7 @@ function updateStatusBar() {
 const PROVIDERS = [
   { id: 'ollama',   name: 'Ollama (Local)',    sub: 'Free · Private · No API key needed',       icon: 'OL', cls: 'ais-icon-ollama'   },
   { id: 'opencode', name: 'OpenCode',          sub: 'Any model via OpenCode app (Claude, GPT…)', icon: 'OC', cls: 'ais-icon-opencode' },
+  { id: 'groq',     name: 'Groq (Fast)',       sub: 'Free · Llama 3.1 70B · ~500 tok/sec',      icon: 'GQ', cls: 'ais-icon-groq'    },
   { id: 'openai',   name: 'OpenAI',           sub: 'GPT-4o, GPT-4 Turbo',                      icon: 'AI', cls: 'ais-icon-openai'   },
   { id: 'anthropic',name: 'Anthropic (Claude)',sub: 'claude-sonnet, opus',                      icon: 'AN', cls: 'ais-icon-anthropic' }
 ];
@@ -2333,7 +2334,9 @@ async function aisLoadSettings() {
     if (s.openai?.model)      { const el = document.getElementById('aisOpenaiModel');    if (el) el.value = s.openai.model; }
     if (s.anthropic?.apiKey)  { const el = document.getElementById('aisAnthropicKey');  if (el) el.value = s.anthropic.apiKey; }
     if (s.anthropic?.model)   { const el = document.getElementById('aisAnthropicModel');if (el) el.value = s.anthropic.model; }
-    if (s.finnhubKey) { const el = document.getElementById('aisFinnhubKey'); if (el) el.value = s.finnhubKey; }
+    if (s.finnhubKey)       { const el = document.getElementById('aisFinnhubKey');  if (el) el.value = s.finnhubKey; }
+    if (s.groq?.apiKey)    { const el = document.getElementById('aisGroqKey');     if (el) el.value = s.groq.apiKey; }
+    if (s.groq?.model)     { const el = document.getElementById('aisGroqModel');   if (el) el.value = s.groq.model; }
     if (s.ollama?.url)        { const el = document.getElementById('aisOllamaUrl');      if (el) el.value = s.ollama.url; }
     if (s.ollama?.model) {
       const sel = document.getElementById('aisOllamaModel');
@@ -2467,10 +2470,15 @@ async function aisSave(provider) {
       apiKey: document.getElementById('aisAnthropicKey')?.value.trim() || '',
       model: document.getElementById('aisAnthropicModel')?.value || 'claude-sonnet-4-5'
     };
+  } else if (provider === 'groq') {
+    body.groq = {
+      apiKey: document.getElementById('aisGroqKey')?.value.trim() || '',
+      model: document.getElementById('aisGroqModel')?.value || 'llama-3.1-70b-versatile'
+    };
   } else if (provider === 'ollama') {
     body.ollama = {
       url: document.getElementById('aisOllamaUrl')?.value.trim() || 'http://localhost:11434',
-      model: document.getElementById('aisOllamaModel')?.value.trim() || 'llama3'
+      model: document.getElementById('aisOllamaModel')?.value.trim() || 'llama3.2'
     };
   }
 
@@ -2491,7 +2499,7 @@ async function aisSave(provider) {
     statusRows.forEach(row => {
       const nameEl = row.querySelector('.ais-status-name');
       const badge  = row.querySelector('.ais-active-badge');
-      const provMap = { 'Ollama (Local)':'ollama', 'OpenCode':'opencode', 'OpenAI':'openai', 'Anthropic':'anthropic' };
+      const provMap = { 'Ollama (Local)':'ollama', 'OpenCode':'opencode', 'Groq (Fast)':'groq', 'OpenAI':'openai', 'Anthropic':'anthropic' };
       const rowProvider = provMap[nameEl?.textContent?.trim()] || '';
       if (rowProvider === provider) {
         row.classList.add('ais-status-active');
@@ -2558,6 +2566,7 @@ async function aisRefreshStatus() {
       { id: 'ollama',    name: 'Ollama (Local)', ok: s.ollama?.running,       detail: s.ollama?.running ? `${s.ollama.model} · ${s.ollama.availableModels?.length || 0} models` : 'Not running — install from ollama.com' },
       { id: 'opencode',  name: 'OpenCode',       ok: s.opencode?.running,     detail: s.opencode?.running ? `Running on port ${s.opencode.port} · agent: ${s.opencode.agent}` : 'Not detected — open the OpenCode app' },
       { id: 'openai',    name: 'OpenAI',         ok: s.openai?.configured,    detail: s.openai?.configured ? `Model: ${s.openai.model}` : 'No API key set' },
+      { id: 'groq',      name: 'Groq (Fast)',    ok: s.groq?.configured,      detail: s.groq?.configured ? `Model: ${s.groq.model}` : 'No API key — free at console.groq.com' },
       { id: 'anthropic', name: 'Anthropic',      ok: s.anthropic?.configured, detail: s.anthropic?.configured ? `Model: ${s.anthropic.model}` : 'No API key set' }
     ];
     // Update OpenCode status badge in panel
@@ -8232,6 +8241,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Ollama retry
   document.getElementById('setupOllamaRetry')?.addEventListener('click', checkOllamaSetup);
+
+  // Groq
+  document.getElementById('setupGroqBtn')?.addEventListener('click', async () => {
+    const key = document.getElementById('setupGroqKey')?.value.trim();
+    if (!key) { showToast('Enter your Groq API key', 'warning'); return; }
+    await saveSetupProvider('groq', { groq: { apiKey: key, model: 'llama-3.1-70b-versatile' } });
+  });
 
   // OpenAI
   document.getElementById('setupOpenaiBtn')?.addEventListener('click', async () => {
